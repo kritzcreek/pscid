@@ -10,8 +10,8 @@
   },
   "scripts": {
     "setup": "bower link && cd bin && bower link pscid && bower install",
-    "compile": "psa -r \"../\" -c -f \"bin/src/**/*.js\" -f \"bin/bower_components/purescript-*/src/**/*.js\" \"bin/src/**/*.purs\" \"bin/bower_components/purescript-*/src/**/*.purs\"",
-    "compile-self": "node index.js -r \"../\" -c -f \"bin/src/**/*.js\" -f \"bin/bower_components/purescript-*/src/**/*.js\" \"bin/src/**/*.purs\" \"bin/bower_components/purescript-*/src/**/*.purs\"",
+    "compile": "psa -c -f \"src/**/*.js\" -f \"bower_components/purescript-*/src/**/*.js\" \"src/**/*.purs\" \"bower_components/purescript-*/src/**/*.purs\"",
+    "compile-self": "node index.js -c -f \"src/**/*.js\" -f \"bower_components/purescript-*/src/**/*.js\" \"src/**/*.purs\" \"bower_components/purescript-*/src/**/*.purs\"",
     "prepublish": "rm -rf output && npm run compile"
   },
   "keywords": [

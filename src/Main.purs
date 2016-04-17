@@ -1,7 +1,6 @@
 module Main where
 
 import Prelude
-import Control.Apply ((*>))
 import Control.Monad.Aff (launchAff, liftEff')
 import Control.Monad.Aff.AVar (AVAR)
 import Control.Monad.Aff.Console (log)
@@ -18,11 +17,7 @@ import Node.ChildProcess (ChildProcess, CHILD_PROCESS)
 import Node.FS (FS)
 import PscIde (load, rebuild, cwd, NET)
 import PscIde.Command (RebuildResult(RebuildResult), RebuildError(RebuildError), Message(Message))
-import Pscid.Server (stopServer, ServerStartResult(..), startServer)
-import Unsafe.Coerce (unsafeCoerce)
-
-hole :: ∀ a. a
-hole = unsafeCoerce unit
+import Pscid.Server (ServerStartResult(..), startServer)
 
 port ∷ Int
 port = 4243
@@ -31,15 +26,11 @@ main ∷ ∀ e. Eff ( err ∷ EXCEPTION, cp ∷ CHILD_PROCESS , console ∷ CONS
 main = launchAff do
   mCp ← serverRunning <$> startServer "psc-ide-server" 4243
   load port [] []
-  case (Just hole) of
-    Nothing → log "Such Error. Wow." *> pure unit
-    Just cp → do
-      Message directory ← fromRight <$> cwd port
-      liftEff' $ runEffFn2 gaze (directory <> "/src/**/*.purs") (rebuildStuff port)
-      liftEff $ clearConsole
-      log "Watching O.O"
-      pure unit
-  -- stopServer port hole
+  Message directory ← fromRight <$> cwd port
+  liftEff' $ runEffFn2 gaze (directory <> "/src/**/*.purs") (rebuildStuff port)
+  liftEff $ clearConsole
+  log "Watching O.O"
+  pure unit
 
 rebuildStuff
   ∷ ∀ e
