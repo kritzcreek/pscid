@@ -1,0 +1,26 @@
+{
+  "name": "pscid",
+  "version": "1.0.0",
+  "description": "A lightweight editor experience for PureScript development",
+  "bin": {
+    "pscid": "index.js"
+  },
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "setup": "bower link && cd bin && bower link pscid && bower install",
+    "compile": "psa -r \"../\" -c -f \"bin/src/**/*.js\" -f \"bin/bower_components/purescript-*/src/**/*.js\" \"bin/src/**/*.purs\" \"bin/bower_components/purescript-*/src/**/*.purs\"",
+    "compile-self": "node index.js -r \"../\" -c -f \"bin/src/**/*.js\" -f \"bin/bower_components/purescript-*/src/**/*.js\" \"bin/src/**/*.purs\" \"bin/bower_components/purescript-*/src/**/*.purs\"",
+    "prepublish": "rm -rf output && npm run compile"
+  },
+  "keywords": [
+    "IDE",
+    "purescript"
+  ],
+  "author": "kritzcreek",
+  "license": "GPL-3.0",
+  "dependencies": {
+    "gaze": "^1.0.0"
+  }
+}
