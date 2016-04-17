@@ -16,4 +16,4 @@ Your project needs to have been built at least once. Then: `pscid`
 
 ### Demo
 
-![Demo GIF](http://i.imgur.com/OTkRMhZ.gifv)
+![Demo GIF](http://i.imgur.com/OTkRMhZ.gif)
