@@ -22,7 +22,9 @@ import Pscid.Server (ServerStartResult(..), startServer)
 port ∷ Int
 port = 4243
 
-main ∷ ∀ e. Eff ( err ∷ EXCEPTION, cp ∷ CHILD_PROCESS , console ∷ CONSOLE , net ∷ NET , avar ∷ AVAR, fs ∷ FS | e) Unit
+main ∷ ∀ e. Eff ( err ∷ EXCEPTION, cp ∷ CHILD_PROCESS
+                , console ∷ CONSOLE , net ∷ NET
+                , avar ∷ AVAR, fs ∷ FS | e) Unit
 main = launchAff do
   mCp ← serverRunning <$> startServer "psc-ide-server" 4243
   load port [] []
@@ -41,7 +43,7 @@ rebuildStuff p file = launchAff do
   errs ← fromRight <$> rebuild p file
   liftEff clearConsole
   log (file <>
-       "\n≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡=\n" <>
+       "\n≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡\n" <>
        (either prettyError prettyWarning errs))
 
 prettyError :: RebuildResult -> String
@@ -53,7 +55,14 @@ prettyWarning rr = "WARNING:\n" <> prettyRebuildResult rr
 
 prettyRebuildResult ∷ RebuildResult -> String
 prettyRebuildResult (RebuildResult errs) = maybe "" pr (head errs)
-  where pr (RebuildError e) = e.message
+  where pr (RebuildError {message, position}) =
+          case position of
+               Nothing ->
+                 message
+               Just {line, column} ->
+                 "line: " <> show line <>
+                 ", column: " <> show column <>
+                 "\n" <> message
 
 serverRunning ∷ ServerStartResult → Maybe ChildProcess
 serverRunning (Started cp) = Just cp
