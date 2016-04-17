@@ -12,7 +12,9 @@ your path.
 
 ### Usage
 
-Your project needs to have been built at least once. Then: `pscid`
+Your project needs to have been built at least once. Then: `pscid` in your projects root folder.
+
+pscid will show you errors and warnings (one at a time) in whatever file you edit+save.
 
 ### Demo
 
