@@ -22,19 +22,14 @@ startServer
   -> Int
   -> Aff (cp :: CHILD_PROCESS, console :: CONSOLE, net :: NET, avar :: AVAR | eff) ServerStartResult
 startServer exe port = do
-  launchServer
-  where
-
-  launchServer = do
     liftEff $ log "Starting psc-ide-server"
     cp <- liftEff $ spawn exe ["-p", show port] defaultSpawnOptions
     let handleErr = makeAff $ \_ succ -> do
                       onError cp (\_ -> succ $ StartError "psc-ide-server error")
                       onClose cp (\exit -> case exit of
-                        (Normally 0) -> succ Closed
-                        (Normally n) -> succ $ StartError $ "Error code returned: "++ show n
-                        _ -> succ $ StartError "Other close error"
-                      )
+                                     (Normally 0) -> succ Closed
+                                     (Normally n) -> succ $ StartError $ "Error code returned: "++ show n
+                                     _ -> succ $ StartError "Other close error")
 
     runPar (Par handleErr <|> Par (later' 100 $ pure $ Started cp))
 

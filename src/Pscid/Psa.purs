@@ -52,7 +52,7 @@ print successMessage options {warnings, errors} = do
     Console.error $ toString (renderWarning 1 1 warning)
     Console.error ""
 
-  when (null errors)
+  when (null warnings && null errors)
     (Console.error successMessage)
 
   iter_ errors \i error -> do
@@ -82,9 +82,8 @@ psaPrinter successMessage  isError file err = do
   case decodeJson err >>= parsePscidResult isError of
     Left _ -> logAny err
     Right out -> do
-      let filenames = Set.singleton file
       out' <- output loadLines defaultOptions out
-      print successMessage  defaultOptions out'
+      print successMessage defaultOptions out'
 
       where
       loadLines filename pos = do

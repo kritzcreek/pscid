@@ -32,11 +32,10 @@ type PscidOptions =
 defaultOptions :: PscidOptions
 defaultOptions = {port: 4243}
 
-
 optionParser :: forall e. Eff (console :: Console.CONSOLE | e) PscidOptions
 optionParser =
   let
-    setup = usage "$0 -p 4245" 
+    setup = usage "$0 -p 4245"
             <> example "$0 -p 4245" "Watching ... on port 4245"
   in
    catchException (\_ -> do
@@ -84,7 +83,7 @@ printRebuildResult
   ∷ ∀ e. String
     → Either Json Json
     → Eff (console ∷ Console.CONSOLE, fs ∷ FS | e) Unit
-printRebuildResult file errs = 
+printRebuildResult file errs =
   catchException (const (Console.error "An error inside psaPrinter")) do
     clearConsole
     Console.log ("Checking " <> file)
