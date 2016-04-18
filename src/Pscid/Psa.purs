@@ -86,7 +86,6 @@ psaPrinter isError file err = do
       print defaultOptions out'
 
       where
-      -- TODO: Handle exceptions
       loadLines filename pos = do
         contents <- Str.split "\n" <$> File.readTextFile Encoding.UTF8 filename
         let source = Array.slice (pos.startLine - 1) (pos.endLine) contents

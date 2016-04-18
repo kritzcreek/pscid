@@ -2,8 +2,8 @@
 
 var gaze = require('gaze');
 
-exports.gaze = function(path, cb){
-  gaze(path, function(err, watcher) {
+exports.gaze = function(glob, cb){
+  gaze(glob, function(err, watcher) {
     // Files have all started watching
     // watcher === this
 
