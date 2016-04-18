@@ -6,6 +6,8 @@ An unintrusive, lightweight tool to make writing PureScript nicer.
 Currently needs the unreleased master branch of the purescript compiler to be on
 your path.
 
+pscid uses @natefaubion's excellent `purescript-psa` to format the errors/warnings and look up source files.
+
 ### Installation
 
 `npm i -g pscid`
