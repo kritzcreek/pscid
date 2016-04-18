@@ -2,6 +2,8 @@ module Main where
 
 import Prelude
 import Control.Monad.Eff.Console as Console
+import Node.Process as Process
+import Control.Apply ((*>))
 import Control.Monad.Aff (runAff, launchAff, liftEff')
 import Control.Monad.Aff.AVar (AVAR)
 import Control.Monad.Aff.Console (log)
@@ -16,12 +18,13 @@ import Data.Function.Eff (runEffFn2, EffFn2)
 import Data.Int (floor)
 import Data.Maybe (Maybe(Nothing, Just))
 import Global (readInt)
-import Node.ChildProcess (ChildProcess, CHILD_PROCESS)
+import Node.ChildProcess (Exit(Normally), onExit, defaultSpawnOptions, spawn, ChildProcess, CHILD_PROCESS)
 import Node.FS (FS)
 import Node.Yargs.Applicative (runY, yarg)
 import Node.Yargs.Setup (example, usage)
 import PscIde (sendCommandR, load, cwd, NET)
 import PscIde.Command (Command(RebuildCmd), Message(Message))
+import Pscid.Keypress (Key(Key), onKeypress, initializeKeypresses)
 import Pscid.Psa (psaPrinter)
 import Pscid.Server (ServerStartResult(..), startServer)
 
@@ -47,16 +50,21 @@ optionParser =
 
 main ∷ ∀ e. Eff ( err ∷ EXCEPTION, cp ∷ CHILD_PROCESS
                 , console ∷ Console.CONSOLE , net ∷ NET
-                , avar ∷ AVAR, fs ∷ FS | e) Unit
+                , avar ∷ AVAR, fs ∷ FS, process ∷ Process.PROCESS | e) Unit
 main = launchAff do
   {port} <- liftEff optionParser
   mCp ← serverRunning <$> startServer "psc-ide-server" port
   load port [] []
   Message directory ← fromRight <$> cwd port
   liftEff' (runEffFn2 gaze (directory <> "/src/**/*.purs") (rebuildStuff port))
-  liftEff $ clearConsole
+  liftEff clearConsole
+  liftEff initializeKeypresses
+  liftEff (onKeypress keyHandler)
   log ("Watching " <> directory <> " on port " <> show port)
   log owl
+
+  log "Press b to run \"pulp build\""
+  log "Press q to quit"
   pure unit
 
 owl :: String
@@ -67,6 +75,21 @@ owl =
  {`"'}   {`"'}    ';:`-':;'    {`"'}   {`"'}
  -"-"-   -"-"-                 -"-"-   -"-"-
   """
+
+keyHandler ∷ ∀ e . Key → Eff ( console ∷ Console.CONSOLE
+                             , cp ∷ CHILD_PROCESS
+                             , process ∷ Process.PROCESS | e) Unit
+keyHandler k = case k of
+  Key {ctrl: false, name: "b", meta: false, shift: false} → buildProject
+  Key {ctrl: false, name: "q", meta: false, shift: false} → Console.log "Bye!" *> Process.exit 0
+  Key {ctrl, name, meta, shift} → Console.log name
+
+buildProject ∷ ∀ e. Eff (cp ∷ CHILD_PROCESS, console ∷ Console.CONSOLE | e) Unit
+buildProject = do
+  cp ← spawn "pulp" ["build"] defaultSpawnOptions
+  onExit cp \e → case e of
+    (Normally errcode) → Console.log ("Build exited with status: " <> show errcode)
+    _ → Console.log "Build terminated by Signal."
 
 rebuildStuff
   ∷ ∀ e . Int → String → Eff ( net ∷ NET , console ∷ Console.CONSOLE | e) Unit
@@ -88,7 +111,6 @@ printRebuildResult file errs =
     clearConsole
     Console.log ("Checking " <> file)
     either (psaPrinter owl true file) (psaPrinter owl false file) errs
-
 
 serverRunning ∷ ServerStartResult → Maybe ChildProcess
 serverRunning (Started cp) = Just cp
