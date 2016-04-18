@@ -12,11 +12,13 @@ import Control.Monad.Eff.Class (liftEff)
 import Control.Monad.Eff.Exception (catchException, EXCEPTION)
 import Control.Monad.Eff.Unsafe (unsafeInterleaveEff)
 import Data.Argonaut (Json)
+import Data.Array (uncons)
 import Data.Either (Either(Left), either)
 import Data.Either.Unsafe (fromRight)
 import Data.Function.Eff (runEffFn2, EffFn2)
 import Data.Int (floor)
-import Data.Maybe (Maybe(Nothing, Just))
+import Data.Maybe (fromMaybe, Maybe(Nothing, Just))
+import Data.String (split)
 import Global (readInt)
 import Node.ChildProcess (Exit(Normally), onExit, defaultSpawnOptions, spawn, ChildProcess, CHILD_PROCESS)
 import Node.FS (FS)
@@ -63,7 +65,7 @@ main = launchAff do
   log ("Watching " <> directory <> " on port " <> show port)
   log owl
 
-  log "Press b to run \"pulp build\""
+  log "Press b to build (tries \"npm run build\" then \"pulp build\")"
   log "Press q to quit"
   pure unit
 
@@ -78,15 +80,18 @@ owl =
 
 keyHandler ∷ ∀ e . Key → Eff ( console ∷ Console.CONSOLE
                              , cp ∷ CHILD_PROCESS
-                             , process ∷ Process.PROCESS | e) Unit
+                             , process ∷ Process.PROCESS
+                             , fs ∷ FS | e) Unit
 keyHandler k = case k of
-  Key {ctrl: false, name: "b", meta: false, shift: false} → buildProject
+  Key {ctrl: false, name: "b", meta: false, shift: false} → getBuildScript >>= buildProject
   Key {ctrl: false, name: "q", meta: false, shift: false} → Console.log "Bye!" *> Process.exit 0
   Key {ctrl, name, meta, shift} → Console.log name
 
-buildProject ∷ ∀ e. Eff (cp ∷ CHILD_PROCESS, console ∷ Console.CONSOLE | e) Unit
-buildProject = do
-  cp ← spawn "pulp" ["build"] defaultSpawnOptions
+buildProject ∷ ∀ e. Maybe String → Eff (cp ∷ CHILD_PROCESS, console ∷ Console.CONSOLE | e) Unit
+buildProject buildScript = do
+  cp <- fromMaybe
+    (spawn "pulp" ["build"] defaultSpawnOptions) $
+    (\{head, tail} → spawn head tail defaultSpawnOptions) <$> (buildScript >>= uncons <<< split " ")
   onExit cp \e → case e of
     (Normally errcode) → Console.log ("Build exited with status: " <> show errcode)
     _ → Console.log "Build terminated by Signal."
@@ -120,3 +125,9 @@ serverRunning (StartError e) = Nothing
 foreign import gaze
   ∷ ∀ eff. EffFn2 (fs ∷ FS | eff) String (String → Eff eff Unit) Unit
 foreign import clearConsole ∷ ∀ e. Eff (console ∷ Console.CONSOLE | e) Unit
+
+foreign import getBuildScriptImpl ∷ ∀ e. EffFn2 (fs ∷ FS | e) (Maybe String) (String → Maybe String) (Maybe String)
+
+getBuildScript ∷ ∀ e. Eff (fs ∷ FS | e) (Maybe String)
+getBuildScript = runEffFn2 getBuildScriptImpl Nothing Just
+

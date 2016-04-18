@@ -12,7 +12,8 @@
     "setup": "bower link pscid && bower install",
     "compile": "psa -c -f \"src/**/*.js\" -f \"bower_components/purescript-*/src/**/*.js\" \"src/**/*.purs\" \"bower_components/purescript-*/src/**/*.purs\"",
     "compile-self": "node index.js -c -f \"src/**/*.js\" -f \"bower_components/purescript-*/src/**/*.js\" \"src/**/*.purs\" \"bower_components/purescript-*/src/**/*.purs\"",
-    "prepublish": "rm -rf output && npm run compile"
+    "prepublish": "rm -rf output && npm run compile",
+    "build": "npm run compile"
   },
   "keywords": [
     "IDE",

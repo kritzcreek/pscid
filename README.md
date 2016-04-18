@@ -24,6 +24,11 @@ projects root folder.
 pscid will show you errors and warnings (one at a time) in whatever file you
 edit+save.
 
+If you hit `b` inside pscid's console window it will try to either run `npm run
+build` or `pulp build`.
+
+Pressing `q` quits pscid.
+
 ### Options
   - `-p` The port to use. Defaults to 4243
 
