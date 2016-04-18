@@ -21,6 +21,7 @@
   "author": "kritzcreek",
   "license": "GPL-3.0",
   "dependencies": {
-    "gaze": "^1.0.0"
+    "gaze": "^1.0.0",
+    "yargs": "^4.6.0"
   }
 }

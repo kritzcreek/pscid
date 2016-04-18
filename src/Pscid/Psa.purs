@@ -46,13 +46,14 @@ type MainEff eff =
   | eff
   )
 
-print :: forall eff. PsaOptions -> Output -> Eff (console :: Console.CONSOLE | eff) Unit
-print options {warnings, errors} = do
+print :: forall eff. String -> PsaOptions -> Output -> Eff (console :: Console.CONSOLE | eff) Unit
+print successMessage options {warnings, errors} = do
   iter_ warnings \i warning -> do
     Console.error $ toString (renderWarning 1 1 warning)
     Console.error ""
 
-  when (null errors) (Console.error "NO ERRORS?!?!?!")
+  when (null errors)
+    (Console.error successMessage)
 
   iter_ errors \i error -> do
     Console.error $ toString (renderError 1 1 error)
@@ -76,14 +77,14 @@ parsePscidResult isError obj =
     maybeToArray (Just a) = [a]
     maybeToArray Nothing = []
 
-psaPrinter :: forall eff. Boolean -> String -> Json -> Eff (MainEff eff) Unit
-psaPrinter isError file err = do
+psaPrinter :: forall eff. String -> Boolean -> String -> Json -> Eff (MainEff eff) Unit
+psaPrinter successMessage  isError file err = do
   case decodeJson err >>= parsePscidResult isError of
     Left _ -> logAny err
     Right out -> do
       let filenames = Set.singleton file
       out' <- output loadLines defaultOptions out
-      print defaultOptions out'
+      print successMessage  defaultOptions out'
 
       where
       loadLines filename pos = do
