@@ -1,3 +1,6 @@
+[![npm version](https://badge.fury.io/js/pscid.svg)](https://badge.fury.io/js/pscid) 
+[![Dependency Status](https://www.versioneye.com/user/projects/5714bac7fcd19a004544136d/badge.svg?style=flat)](https://www.versioneye.com/user/projects/5714bac7fcd19a004544136d)
+
 pscid
 ===
 
