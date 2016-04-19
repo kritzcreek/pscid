@@ -34,11 +34,14 @@ defaultOptions =
 pulpCmd ∷ String
 pulpCmd = if platform == Win32 then "pulp.cmd" else "pulp"
 
+npmCmd ∷ String
+npmCmd = if platform == Win32 then "npm.cmd" else "npm"
+
 mkDefaultOptions ∷ ∀ e. Eff (fs ∷ FS | e) PscidOptions
 mkDefaultOptions = do
   hbs ← hasBuildScript
   pure (defaultOptions {buildCommand = if hbs
-                                       then "npm run -s build"
+                                       then (npmCmd <> " run -s build")
                                        else (pulpCmd <> " build")})
 
 optionParser ∷ ∀ e. Eff (console ∷ Console.CONSOLE, fs ∷ FS | e) PscidOptions
