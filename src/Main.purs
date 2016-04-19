@@ -1,15 +1,14 @@
 module Main where
 
 import Prelude
+import Control.Monad.Eff.Console as Console
 import Node.Process as Process
-import Control.Apply ((*>))
 import Control.Bind ((=<<))
 import Control.Monad.Aff (runAff, launchAff)
 import Control.Monad.Aff.AVar (AVAR)
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Class (liftEff)
 import Control.Monad.Eff.Console (log, CONSOLE)
-import Control.Monad.Eff.Console as Console
 import Control.Monad.Eff.Exception (catchException, EXCEPTION)
 import Control.Monad.Eff.Unsafe (unsafeInterleaveEff)
 import Control.Monad.ST (readSTRef, modifySTRef, newSTRef, runST)
@@ -30,7 +29,7 @@ import PscIde.Command (Command(RebuildCmd), Message(Message))
 import Pscid.Keypress (Key(Key), onKeypress, initializeKeypresses)
 import Pscid.Options (optionParser)
 import Pscid.Psa (psaPrinter)
-import Pscid.Server (startServer)
+import Pscid.Server (stopServer, startServer)
 
 infixr 9 compose as ∘
 
@@ -46,7 +45,7 @@ main = launchAff do
     (runEffFn2 gaze (directory <> "/src/**/*.purs") (triggerRebuild port))
     clearConsole
     initializeKeypresses
-    (onKeypress (keyHandler buildCommand))
+    (onKeypress (keyHandler port buildCommand))
     log ("Watching " <> directory <> " on port " <> show port)
     log owl
     log "Press b to build (tries \"npm run build\" then \"pulp build\")"
@@ -61,13 +60,14 @@ owl =
  -"-"-   -"-"-                 -"-"-   -"-"-
   """
 
-keyHandler ∷ ∀ e . String → Key → Eff ( console ∷ CONSOLE
-                                      , cp ∷ CHILD_PROCESS
-                                      , process ∷ Process.PROCESS
-                                      , fs ∷ FS | e) Unit
-keyHandler buildCommand k = case k of
+keyHandler ∷ ∀ e. Int → String → Key → Eff ( console ∷ CONSOLE , cp ∷ CHILD_PROCESS
+                                             , process ∷ Process.PROCESS , net ∷ NET
+                                             , fs ∷ FS | e) Unit
+keyHandler port buildCommand k = case k of
   Key {ctrl: false, name: "b", meta: false, shift: false} → buildProject buildCommand
-  Key {ctrl: false, name: "q", meta: false, shift: false} → Console.log "Bye!" *> Process.exit 0
+  Key {ctrl: false, name: "q", meta: false, shift: false} → do
+    Console.log "Bye!"
+    runAff (const (Process.exit 0)) (const (Process.exit 0)) (stopServer port)
   Key {ctrl, name, meta, shift}                           → Console.log name
 
 buildProject ∷ ∀ e. String → Eff (cp ∷ CHILD_PROCESS, console ∷ CONSOLE | e) Unit

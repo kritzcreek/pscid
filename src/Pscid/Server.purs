@@ -34,7 +34,7 @@ startServer exe port = do
     runPar (Par handleErr <|> Par (later' 100 $ pure $ Started cp))
 
 -- | Stop a psc-ide server. Currently implemented by asking it nicely, but potentially by killing it if that doesn't work...
-stopServer :: forall eff. Int -> ChildProcess -> Aff (cp :: CHILD_PROCESS, net :: NET | eff) Unit
-stopServer port cp = do
+stopServer :: forall eff. Int -> Aff (cp :: CHILD_PROCESS, net :: NET | eff) Unit
+stopServer port = do
   res <- quit port
   pure unit
