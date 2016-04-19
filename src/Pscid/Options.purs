@@ -5,9 +5,8 @@ import Control.Monad.Eff.Console as Console
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Exception (catchException)
 import Data.Either (Either(Left))
-import Data.Function.Eff (EffFn2, runEffFn2)
 import Data.Int (floor)
-import Data.Maybe (Maybe(Just, Nothing), fromMaybe)
+import Data.Maybe (Maybe(Just))
 import Global (readInt)
 import Node.FS (FS)
 import Node.Platform (Platform(Win32))
@@ -32,15 +31,17 @@ defaultOptions =
   , testAfterSave: false
   }
 
-pulpCmd :: String
+pulpCmd ∷ String
 pulpCmd = if platform == Win32 then "pulp.cmd" else "pulp"
 
 mkDefaultOptions ∷ ∀ e. Eff (fs ∷ FS | e) PscidOptions
 mkDefaultOptions = do
-  bc ← getBuildScript
-  pure (defaultOptions {buildCommand = fromMaybe (pulpCmd <> " build") bc})
+  hbs ← hasBuildScript
+  pure (defaultOptions {buildCommand = if hbs
+                                       then "npm run -s build"
+                                       else (pulpCmd <> " build")})
 
-optionParser :: ∀ e. Eff (console ∷ Console.CONSOLE, fs ∷ FS | e) PscidOptions
+optionParser ∷ ∀ e. Eff (console ∷ Console.CONSOLE, fs ∷ FS | e) PscidOptions
 optionParser =
   let
     setup = usage "$0 -p 4245" <> example "$0 -p 4245" "Watching ... on port 4245"
@@ -58,8 +59,4 @@ optionParser =
        <*> flag "--build" ["build"] (Just "Build project after save")
        <*> flag "--test" ["test"] (Just "Test project after save")
 
-foreign import getBuildScriptImpl
-  ∷ ∀ e. EffFn2 (fs ∷ FS | e) (Maybe String) (String → Maybe String) (Maybe String)
-
-getBuildScript ∷ ∀ e. Eff (fs ∷ FS | e) (Maybe String)
-getBuildScript = runEffFn2 getBuildScriptImpl Nothing Just
+foreign import hasBuildScript ∷ ∀ e. Eff (fs ∷ FS | e) Boolean

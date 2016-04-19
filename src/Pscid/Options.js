@@ -1,17 +1,15 @@
 //module Pscid.Options
 
-exports.getBuildScriptImpl = function(nothing, just){
+exports.hasBuildScript = function(){
   try {
     var pjson = require(process.cwd() + '/package.json');
     if (pjson.scripts && pjson.scripts.build){
-      return just(pjson.scripts.build);
+      return true;
     }
     else {
-      return nothing;
+      return false;
     }
-
   } catch (e) {
-    return nothing;
+    return false;
   }
-
 };
