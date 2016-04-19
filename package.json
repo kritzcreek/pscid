@@ -2,6 +2,7 @@
   "name": "pscid",
   "version": "1.5.4",
   "description": "A lightweight editor experience for PureScript development",
+  "repository": "https://github.com/kritzcreek/pscid",
   "bin": {
     "pscid": "index.js"
   },
