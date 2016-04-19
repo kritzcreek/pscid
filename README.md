@@ -34,4 +34,4 @@ Pressing `q` quits pscid.
 
 ### Demo
 
-![Demo GIF](http://i.imgur.com/OTkRMhZ.gif)
+![Demo GIF](http://i.imgur.com/ssBtu6w.gif)
