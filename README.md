@@ -4,13 +4,7 @@
 pscid
 ===
 
-An unintrusive, lightweight tool to make writing PureScript nicer.
-
-Currently needs the unreleased master branch of the purescript compiler to be on
-your path.
-
-pscid uses @natefaubion's excellent `purescript-psa` to format the
-errors/warnings and look up source files.
+An editor agnostic minimal IDE for your shell. Think `pulp -w build` on steroids.
 
 ### Installation
 
@@ -18,20 +12,23 @@ errors/warnings and look up source files.
 
 ### Usage
 
-Your project needs to have been built at least once. Then call `pscid` in your
-projects root folder.
+Start `pscid` in a terminal in the root folder of your project.
 
-pscid will show you errors and warnings (one at a time) in whatever file you
-edit+save.
+pscid will show you errors and warnings (one at a time) whenever you save a PureScript source file. This makes for a nice iterative workflow.
 
-If you hit `b` inside pscid's console window it will try to either run `npm run
-build` or `pulp build`.
+Type `b` inside `pscid`'s terminal window to build your project. This looks up the `build` script inside your package.json and failing to find that will run `pulp build`.
 
-Pressing `q` quits pscid.
-
-### Options
-  - `-p` The port to use. Defaults to 4243
+Type `q` to quit pscid.
 
 ### Demo
 
 ![Demo GIF](http://i.imgur.com/ssBtu6w.gif)
+
+### Options
+  - `-p` The port to use. Defaults to 4243
+
+### Attribution
+
+pscid utilizes https://github.com/natefaubion/purescript-psa to format and enrich the errors and warnings emitted by the compiler.
+
+It's inspired by https://github.com/ndmitchell/ghcid and https://github.com/anttih/psc-pane.
