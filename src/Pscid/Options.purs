@@ -10,6 +10,8 @@ import Data.Int (floor)
 import Data.Maybe (Maybe(Just, Nothing), fromMaybe)
 import Global (readInt)
 import Node.FS (FS)
+import Node.Platform (Platform(Win32))
+import Node.Process (platform)
 import Node.Yargs.Applicative (flag, yarg, runY)
 import Node.Yargs.Setup (example, usage)
 
@@ -24,16 +26,19 @@ type PscidOptions =
 defaultOptions ∷ PscidOptions
 defaultOptions =
   { port: 4243
-  , buildCommand: "pulp build"
-  , testCommand: "pulp test"
+  , buildCommand: pulpCmd <> " build"
+  , testCommand: pulpCmd <> " test"
   , buildAfterSave: false
   , testAfterSave: false
   }
 
+pulpCmd :: String
+pulpCmd = if platform == Win32 then "pulp.cmd" else "pulp"
+
 mkDefaultOptions ∷ ∀ e. Eff (fs ∷ FS | e) PscidOptions
 mkDefaultOptions = do
   bc ← getBuildScript
-  pure (defaultOptions {buildCommand = fromMaybe "pulp build" bc})
+  pure (defaultOptions {buildCommand = fromMaybe (pulpCmd <> " build") bc})
 
 optionParser :: ∀ e. Eff (console ∷ Console.CONSOLE, fs ∷ FS | e) PscidOptions
 optionParser =
