@@ -20,6 +20,7 @@ type PscidOptions =
   , testCommand    ∷ String
   , buildAfterSave ∷ Boolean
   , testAfterSave  ∷ Boolean
+  , includes       ∷ String
   }
 
 defaultOptions ∷ PscidOptions
@@ -29,6 +30,7 @@ defaultOptions =
   , testCommand: pulpCmd <> " test"
   , buildAfterSave: false
   , testAfterSave: false
+  , includes: ""
   }
 
 pulpCmd ∷ String
@@ -57,13 +59,15 @@ optionParser =
                       Console.error "Failed parsing the arguments."
                       Console.error "Falling back to default options"
                       mkDefaultOptions) $
-     runY setup $ (\port buildAfterSave testAfterSave → do
+     runY setup $ (\port buildAfterSave testAfterSave includes → do
                     mkDefaultOptions <#> _ { port = floor (readInt 10 port)
                                            , buildAfterSave = buildAfterSave
                                            , testAfterSave = testAfterSave
+                                           , includes = includes
                                            })
        <$> yarg "p" ["port"] (Just "The Port") (Left "4243") false
        <*> flag "--build" ["build"] (Just "Build project after save")
        <*> flag "--test" ["test"] (Just "Test project after save")
+       <*> yarg "I" ["include"] (Just "Additional globs for PureScript source files, separated by `;`") (Left "") false
 
 foreign import hasNamedScript ∷ ∀ e. String → Eff (fs ∷ FS | e) Boolean
