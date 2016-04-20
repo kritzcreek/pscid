@@ -59,6 +59,7 @@ main = launchAff do
     log ("Watching " <> directory <> " on port " <> show port)
     log owl
     log "Press b to build (tries \"npm run build\" then \"pulp build\")"
+    log "Press t to test (tries \"npm run test\" then \"pulp test\")"
     log "Press r to reset"
     log "Press q to quit"
 
@@ -78,7 +79,9 @@ keyHandler k = do
   {port} ← ask
   case k of
     Key {ctrl: false, name: "b", meta: false, shift: false} →
-      buildProject
+      runCommand "Build" =<< (_.buildCommand <$> ask)
+    Key {ctrl: false, name: "t", meta: false, shift: false} →
+      runCommand "Test" =<< (_.testCommand <$> ask)
     Key {ctrl: false, name: "r", meta: false, shift: false} →
       liftEff ∘ catchLog "Failed to restart server" $ launchAff do
         restartServer port
@@ -91,14 +94,17 @@ keyHandler k = do
     exit ∷ ∀ a eff. a → Eff (process ∷ Process.PROCESS | eff) Unit
     exit = const (Process.exit 0)
 
-buildProject ∷ ∀ e. Pscid (cp ∷ CHILD_PROCESS, console ∷ CONSOLE | e) Unit
-buildProject = do
-  {buildCommand} ← ask
-  liftEff ∘ catchLog "Build Project threw an exception" $
+runCommand
+  ∷ ∀ e
+  . String
+  → String
+  → Pscid (cp ∷ CHILD_PROCESS, console ∷ CONSOLE | e) Unit
+runCommand name command = do
+  liftEff ∘ catchLog (name <> " threw an exception") $
     runST do
-      let cmd = fromJust (uncons (split " " buildCommand))
+      let cmd = fromJust (uncons (split " " command))
       output ← newSTRef ""
-      log ("Running: \"" <> buildCommand <> "\"")
+      log ("Running: \"" <> command <> "\"")
       cp ← spawn cmd.head cmd.tail defaultSpawnOptions
 
       let stout = stdout cp
@@ -111,10 +117,10 @@ buildProject = do
         modifySTRef output (_ <> s) $> unit
 
       onExit cp \e → case e of
-        Normally 0 → Console.log "Build successful!"
+        Normally 0 → Console.log (name <> " successful!")
         Normally code → do
           log =<< readSTRef output
-          log ("Build errored with code: " <> show code)
+          log (name <> " errored with code: " <> show code)
         BySignal _       → pure unit
 
 triggerRebuild

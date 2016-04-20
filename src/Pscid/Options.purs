@@ -38,11 +38,15 @@ npmCmd ∷ String
 npmCmd = if platform == Win32 then "npm.cmd" else "npm"
 
 mkDefaultOptions ∷ ∀ e. Eff (fs ∷ FS | e) PscidOptions
-mkDefaultOptions = do
-  hbs ← hasBuildScript
-  pure (defaultOptions {buildCommand = if hbs
-                                       then (npmCmd <> " run -s build")
-                                       else (pulpCmd <> " build")})
+mkDefaultOptions =
+  defaultOptions { buildCommand = _ , testCommand = _ }
+    <$> mkCommand "build"
+    <*> mkCommand "test"
+
+mkCommand ∷ ∀ e. String → Eff (fs ∷ FS | e) String
+mkCommand cmd =
+  hasNamedScript cmd <#> \b →
+    (if b then npmCmd <> " run -s " else pulpCmd <> " ") <> cmd
 
 optionParser ∷ ∀ e. Eff (console ∷ Console.CONSOLE, fs ∷ FS | e) PscidOptions
 optionParser =
@@ -62,4 +66,4 @@ optionParser =
        <*> flag "--build" ["build"] (Just "Build project after save")
        <*> flag "--test" ["test"] (Just "Test project after save")
 
-foreign import hasBuildScript ∷ ∀ e. Eff (fs ∷ FS | e) Boolean
+foreign import hasNamedScript ∷ ∀ e. String → Eff (fs ∷ FS | e) Boolean
