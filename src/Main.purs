@@ -17,13 +17,13 @@ import Control.Monad.Reader.Trans (runReaderT, ReaderT)
 import Control.Monad.ST (readSTRef, modifySTRef, newSTRef, runST)
 import Control.Monad.Trans (lift)
 import Data.Argonaut (Json)
-import Data.Array (cons, uncons, filter)
+import Data.Array (uncons)
 import Data.Either (isLeft, Either(), either)
 import Data.Either.Unsafe (fromRight)
 import Data.Function.Eff (runEffFn2, EffFn2)
 import Data.Functor (($>))
 import Data.Maybe.Unsafe (fromJust)
-import Data.String (split, null)
+import Data.String (split)
 import Node.ChildProcess (stderr, stdout, Exit(BySignal, Normally), onExit, defaultSpawnOptions, spawn, CHILD_PROCESS)
 import Node.Encoding (Encoding(UTF8))
 import Node.FS (FS)
@@ -43,16 +43,15 @@ main ∷ ∀ e. Eff ( err ∷ EXCEPTION, cp ∷ CHILD_PROCESS
                 , console ∷ CONSOLE , net ∷ NET
                 , avar ∷ AVAR, fs ∷ FS, process ∷ Process.PROCESS | e) Unit
 main = launchAff do
-  config@{ port, includes } ← liftEff optionParser
+  config@{ port, sourceDirectories } ← liftEff optionParser
   liftEff (log "Starting psc-ide-server")
   r ← attempt $ startServer "psc-ide-server" port
   when (isLeft r) (restartServer port)
   load port [] []
   Message directory ← fromRight <$> cwd port
-  let dirs = filter (not null) $ "src" `cons` split ";" includes
   liftEff do
     runEffFn2 gaze
-      (map (\g → directory <> "/" <> g <> "/**/*.purs") dirs)
+      (map (\g → directory <> "/" <> g <> "/**/*.purs") sourceDirectories)
       (\d → runReaderT (triggerRebuild d) config)
     clearConsole
     initializeKeypresses
