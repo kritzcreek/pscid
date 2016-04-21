@@ -20,6 +20,8 @@ pscid will show you errors and warnings (one at a time) whenever you save a Pure
 
 Type `b` inside `pscid`'s terminal window to build your project. This looks up the `build` script inside your package.json and failing to find that will run `pulp build`.
 
+Type `t` inside `pscid`'s terminal window to test your project. As with building this looks up the `test` script in package.json first, and falls back to `pulp test` otherwise.
+
 Type `q` to quit pscid.
 
 ### Demo
