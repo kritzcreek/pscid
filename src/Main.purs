@@ -20,7 +20,7 @@ import Control.Monad.ST (readSTRef, modifySTRef, newSTRef, runST)
 import Control.Monad.Trans (lift)
 import Data.Argonaut (Json)
 import Data.Array (uncons)
-import Data.Either (isLeft, Either(Left, Right), either)
+import Data.Either (isRight, isLeft, Either, either)
 import Data.Either.Unsafe (fromRight)
 import Data.Function.Eff (runEffFn2, EffFn2)
 import Data.Functor (($>))
@@ -132,11 +132,9 @@ triggerRebuild file = do
   {port, testCommand, testAfterRebuild} ← ask
   lift ∘ catchLog "We couldn't talk to the server" $ launchAff do
     errs ← fromRight <$> sendCommandR port (RebuildCmd file)
-    case errs of
-      Right warnings → liftEff do
-        printRebuildResult file (Right warnings)
-        when testAfterRebuild (runCommand "Test" testCommand)
-      Left errors → liftEff (printRebuildResult file (Left errors))
+    liftEff (printRebuildResult file errs)
+    liftEff ∘ when (testAfterRebuild && isRight errs) $
+      runCommand "Test" testCommand
 
 printRebuildResult
   ∷ ∀ e. String
