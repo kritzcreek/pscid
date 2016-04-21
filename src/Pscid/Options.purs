@@ -20,8 +20,7 @@ type PscidOptions =
   { port              ∷ Int
   , buildCommand      ∷ String
   , testCommand       ∷ String
-  , buildAfterSave    ∷ Boolean
-  , testAfterSave     ∷ Boolean
+  , testAfterRebuild  ∷ Boolean
   , sourceDirectories ∷ Array String
   }
 
@@ -30,8 +29,7 @@ defaultOptions =
   { port: 4243
   , buildCommand: pulpCmd <> " build"
   , testCommand: pulpCmd <> " test"
-  , buildAfterSave: false
-  , testAfterSave: false
+  , testAfterRebuild: false
   , sourceDirectories: ["src"]
   }
 
@@ -61,15 +59,13 @@ optionParser =
                       Console.error "Failed parsing the arguments."
                       Console.error "Falling back to default options"
                       mkDefaultOptions) $
-     runY setup $ (\port buildAfterSave testAfterSave includes → do
+     runY setup $ (\port testAfterRebuild includes → do
                     let dirs = filter (not null) $ "src" `cons` split ";" includes
                     mkDefaultOptions <#> _ { port = floor (readInt 10 port)
-                                           , buildAfterSave = buildAfterSave
-                                           , testAfterSave = testAfterSave
+                                           , testAfterRebuild = testAfterRebuild
                                            , sourceDirectories = dirs
                                            })
        <$> yarg "p" ["port"] (Just "The Port") (Left "4243") false
-       <*> flag "--build" ["build"] (Just "Build project after save")
        <*> flag "--test" ["test"] (Just "Test project after save")
        <*> yarg "I" ["include"] (Just "Additional globs for PureScript source files, separated by `;`") (Left "") false
 

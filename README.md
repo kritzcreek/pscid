@@ -28,6 +28,7 @@ Type `q` to quit pscid.
 
 ### Options
   - `-p` The port to use. Defaults to 4243
+  - `--test` Runs your tests after every successful rebuild
 
 ### Attribution
 

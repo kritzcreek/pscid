@@ -3,6 +3,8 @@ module Main where
 import Prelude
 import Control.Monad.Eff.Console as Console
 import Node.Process as Process
+import Ansi.Codes (Color(Green, Red))
+import Ansi.Output (foreground, withGraphics)
 import Control.Apply ((*>))
 import Control.Bind ((=<<))
 import Control.Monad (when)
@@ -18,13 +20,13 @@ import Control.Monad.ST (readSTRef, modifySTRef, newSTRef, runST)
 import Control.Monad.Trans (lift)
 import Data.Argonaut (Json)
 import Data.Array (uncons)
-import Data.Either (isLeft, Either(), either)
+import Data.Either (isLeft, Either(Left, Right), either)
 import Data.Either.Unsafe (fromRight)
 import Data.Function.Eff (runEffFn2, EffFn2)
 import Data.Functor (($>))
 import Data.Maybe.Unsafe (fromJust)
 import Data.String (split)
-import Node.ChildProcess (stderr, stdout, Exit(BySignal, Normally), onExit, defaultSpawnOptions, spawn, CHILD_PROCESS)
+import Node.ChildProcess (CHILD_PROCESS, stderr, stdout, Exit(BySignal, Normally), onExit, defaultSpawnOptions, spawn)
 import Node.Encoding (Encoding(UTF8))
 import Node.FS (FS)
 import Node.Stream (onDataString)
@@ -45,13 +47,13 @@ main ∷ ∀ e. Eff ( err ∷ EXCEPTION, cp ∷ CHILD_PROCESS
 main = launchAff do
   config@{ port, sourceDirectories } ← liftEff optionParser
   liftEff (log "Starting psc-ide-server")
-  r ← attempt $ startServer "psc-ide-server" port
+  r ← attempt (startServer "psc-ide-server" port)
   when (isLeft r) (restartServer port)
   load port [] []
   Message directory ← fromRight <$> cwd port
   liftEff do
     runEffFn2 gaze
-      (map (\g → directory <> "/" <> g <> "/**/*.purs") sourceDirectories)
+      (sourceDirectories <#> \g → directory <> "/" <> g <> "/**/*.purs")
       (\d → runReaderT (triggerRebuild d) config)
     clearConsole
     initializeKeypresses
@@ -76,12 +78,12 @@ keyHandler ∷ ∀ e. Key → Pscid ( console ∷ CONSOLE , cp ∷ CHILD_PROCESS
                               , process ∷ Process.PROCESS , net ∷ NET
                               , fs ∷ FS, avar ∷ AVAR | e) Unit
 keyHandler k = do
-  {port} ← ask
+  {port, buildCommand, testCommand} ← ask
   case k of
     Key {ctrl: false, name: "b", meta: false, shift: false} →
-      runCommand "Build" =<< (_.buildCommand <$> ask)
+      liftEff (runCommand "Build" buildCommand)
     Key {ctrl: false, name: "t", meta: false, shift: false} →
-      runCommand "Test" =<< (_.testCommand <$> ask)
+      liftEff (runCommand "Test" testCommand)
     Key {ctrl: false, name: "r", meta: false, shift: false} →
       liftEff ∘ catchLog "Failed to restart server" $ launchAff do
         restartServer port
@@ -98,9 +100,9 @@ runCommand
   ∷ ∀ e
   . String
   → String
-  → Pscid (cp ∷ CHILD_PROCESS, console ∷ CONSOLE | e) Unit
-runCommand name command = do
-  liftEff ∘ catchLog (name <> " threw an exception") $
+  → Eff (cp ∷ CHILD_PROCESS, console ∷ CONSOLE | e) Unit
+runCommand name command =
+   catchLog (name <> " threw an exception") $
     runST do
       let cmd = fromJust (uncons (split " " command))
       output ← newSTRef ""
@@ -117,24 +119,29 @@ runCommand name command = do
         modifySTRef output (_ <> s) $> unit
 
       onExit cp \e → case e of
-        Normally 0 → Console.log (name <> " successful!")
+        Normally 0 → logColored Green (name <> " successful!")
         Normally code → do
           log =<< readSTRef output
-          log (name <> " errored with code: " <> show code)
+          logColored Red (name <> " errored with code: " <> show code)
         BySignal _       → pure unit
 
 triggerRebuild
-  ∷ ∀ e . String → Pscid (net ∷ NET, console ∷ CONSOLE, fs ∷ FS | e) Unit
+  ∷ ∀ e . String → Pscid ( cp ∷ CHILD_PROCESS, net ∷ NET
+                         , console ∷ CONSOLE, fs ∷ FS | e) Unit
 triggerRebuild file = do
-  {port} ← ask
+  {port, testCommand, testAfterRebuild} ← ask
   lift ∘ catchLog "We couldn't talk to the server" $ launchAff do
     errs ← fromRight <$> sendCommandR port (RebuildCmd file)
-    liftEff (printRebuildResult file errs)
+    case errs of
+      Right warnings → liftEff do
+        printRebuildResult file (Right warnings)
+        when testAfterRebuild (runCommand "Test" testCommand)
+      Left errors → liftEff (printRebuildResult file (Left errors))
 
 printRebuildResult
   ∷ ∀ e. String
-    → Either Json Json
-    → Eff (console ∷ CONSOLE, fs ∷ FS | e) Unit
+  → Either Json Json
+  → Eff (console ∷ CONSOLE, fs ∷ FS | e) Unit
 printRebuildResult file errs =
   catchLog "An error inside psaPrinter" do
     clearConsole
@@ -156,3 +163,7 @@ catchLog
   → Eff (console ∷ CONSOLE, err ∷ EXCEPTION | e) Unit
   → Eff (console ∷ CONSOLE | e) Unit
 catchLog m = catchException (const (Console.error m))
+
+logColored ∷ ∀ e.Color → String → Eff (console ∷ CONSOLE | e) Unit
+logColored c = withGraphics log (foreground c)
+
