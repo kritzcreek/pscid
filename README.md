@@ -28,7 +28,7 @@ Type `q` to quit pscid.
 
 ### Options
   - `-p` The port to use. Defaults to 4243
-  - `--include -I <dir:dir:...>`  Additional directories for PureScript source files, separated by `;`.
+  - `--include -I <dir;dir;...>`  Additional directories for PureScript source files, separated by `;`
   - `--test` Runs your tests after every successful rebuild
 
 ### Attribution
