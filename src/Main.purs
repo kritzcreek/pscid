@@ -8,7 +8,7 @@ import Ansi.Output (foreground, withGraphics)
 import Control.Apply ((*>))
 import Control.Bind ((=<<))
 import Control.Monad (when)
-import Control.Monad.Aff (attempt, runAff, launchAff)
+import Control.Monad.Aff (attempt, runAff, launchAff, later')
 import Control.Monad.Aff.AVar (AVAR)
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Class (liftEff)
@@ -49,8 +49,9 @@ main = launchAff do
   liftEff (log "Starting psc-ide-server")
   r ← attempt (startServer "psc-ide-server" port)
   when (isLeft r) (restartServer port)
-  load port [] []
-  Message directory ← fromRight <$> cwd port
+  Message directory ← later' 100 do
+    load port [] []
+    fromRight <$> cwd port
   liftEff do
     runEffFn2 gaze
       (sourceDirectories <#> \g → directory <> "/" <> g <> "/**/*.purs")
@@ -84,10 +85,12 @@ keyHandler k = do
       liftEff (runCommand "Build" buildCommand)
     Key {ctrl: false, name: "t", meta: false, shift: false} →
       liftEff (runCommand "Test" testCommand)
-    Key {ctrl: false, name: "r", meta: false, shift: false} →
-      liftEff ∘ catchLog "Failed to restart server" $ launchAff do
+    Key {ctrl: false, name: "r", meta: false, shift: false} → liftEff do
+      clearConsole
+      catchLog "Failed to restart server" $ launchAff do
         restartServer port
         load port [] []
+      log owl
     Key {ctrl: false, name: "q", meta: false, shift: false} →
       liftEff (log "Bye!" *> runAff exit exit (stopServer port))
     Key {ctrl, name, meta, shift} →
