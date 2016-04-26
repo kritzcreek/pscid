@@ -19,7 +19,7 @@
     "purescript-eff-functions": "^0.1.1",
     "purescript-ansi": "^0.1.3",
     "purescript-psa": "https://github.com/natefaubion/purescript-psa.git#v0.3.6",
-    "purescript-yargs": "^0.7.2",
+    "purescript-yargs": "https://github.com/kritzcreek/purescript-yargs.git#master",
     "purescript-node-process": "^0.5.0",
     "purescript-transformers": "^0.8.4"
   },
