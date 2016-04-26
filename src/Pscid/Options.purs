@@ -14,7 +14,7 @@ import Node.FS (FS)
 import Node.Platform (Platform(Win32))
 import Node.Process (platform)
 import Node.Yargs.Applicative (flag, yarg, runY)
-import Node.Yargs.Setup (example, usage)
+import Node.Yargs.Setup (example, usage, defaultHelp, defaultVersion)
 
 type PscidOptions =
   { port              ∷ Int
@@ -53,7 +53,7 @@ mkCommand cmd =
 optionParser ∷ ∀ e. Eff (console ∷ Console.CONSOLE, fs ∷ FS | e) PscidOptions
 optionParser =
   let
-    setup = usage "$0 -p 4245" <> example "$0 -p 4245" "Watching ... on port 4245"
+    setup = usage "$0 -p 4245" <> example "$0 -p 4245" "Watching ... on port 4245" <> defaultHelp <> defaultVersion
   in
    catchException (const do
                       Console.error "Failed parsing the arguments."
