@@ -14,7 +14,7 @@
   "dependencies": {
     "purescript-console": "^0.1.0",
     "purescript-aff": "^0.16.1",
-    "purescript-psc-ide": "^2.0.0",
+    "purescript-psc-ide": "^2.1.0",
     "purescript-node-child-process": "^0.6.1",
     "purescript-eff-functions": "^0.1.1",
     "purescript-ansi": "^0.1.3",

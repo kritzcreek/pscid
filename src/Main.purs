@@ -24,6 +24,7 @@ import Data.Either (isRight, isLeft, Either, either)
 import Data.Either.Unsafe (fromRight)
 import Data.Function.Eff (runEffFn2, EffFn2)
 import Data.Functor (($>))
+import Data.Maybe (Maybe(Nothing))
 import Data.Maybe.Unsafe (fromJust)
 import Data.String (split)
 import Node.ChildProcess (CHILD_PROCESS, stderr, stdout, Exit(BySignal, Normally), onExit, defaultSpawnOptions, spawn)
@@ -47,7 +48,7 @@ main ∷ ∀ e. Eff ( err ∷ EXCEPTION, cp ∷ CHILD_PROCESS
 main = launchAff do
   config@{ port, sourceDirectories } ← liftEff optionParser
   liftEff (log "Starting psc-ide-server")
-  r ← attempt (startServer "psc-ide-server" port)
+  r ← attempt (startServer "psc-ide-server" port Nothing)
   when (isLeft r) (restartServer port)
   Message directory ← later' 100 do
     load port [] []

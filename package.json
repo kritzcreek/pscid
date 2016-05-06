@@ -25,6 +25,7 @@
   "dependencies": {
     "gaze": "^1.0.0",
     "keypress": "^0.2.1",
+    "which": "^1.2.8",
     "yargs": "^4.6.0"
   }
 }
