@@ -25,7 +25,7 @@ import Psa.Printer (renderAnsi, renderRow)
 import Psa.Printer.Default (renderError, renderWarning)
 import Psa.Util (iter_)
 
-defaultOptions :: PsaOptions
+defaultOptions ∷ PsaOptions
 defaultOptions =
   { ansi: true
   , censorWarnings: false
@@ -40,53 +40,51 @@ defaultOptions =
   }
 
 type MainEff eff =
-  ( console :: Console.CONSOLE
-  , err :: EXCEPTION
-  , fs :: FS
+  ( console ∷ Console.CONSOLE
+  , err ∷ EXCEPTION
+  , fs ∷ FS
   | eff
   )
 
-print :: forall eff. String -> PsaOptions -> Output -> Eff (console :: Console.CONSOLE | eff) Unit
+print ∷ forall eff. String → PsaOptions → Output → Eff (console ∷ Console.CONSOLE | eff) Unit
 print successMessage options {warnings, errors} = do
-  iter_ warnings \i warning -> do
-    Console.error $ toString (renderWarning 1 1 warning)
+  iter_ warnings \i warning → do
+    Console.error (toString (renderWarning 1 1 warning))
     Console.error ""
 
   when (null warnings && null errors)
     (Console.error successMessage)
 
-  iter_ errors \i error -> do
-    Console.error $ toString (renderError 1 1 error)
+  iter_ errors \i error → do
+    Console.error (toString (renderError 1 1 error))
     Console.error ""
-
-  -- Console.error $ toString (renderStats' output.stats)
 
   where
   toString = renderRow (joinWith "" <<< map (renderAnsi options.ansi))
 
-parsePscidResult :: Boolean -> Array (StrMap Json) -> Either String PsaResult
+parsePscidResult ∷ Boolean → Array (StrMap Json) → Either String PsaResult
 parsePscidResult isError obj =
   (if isError
-  then { warnings: []
-       , errors: _
-       }
-  else { warnings: _
-       , errors: []
-       }) <$> maybeToArray <<< head <$> traverse parsePsaError obj
+   then { warnings: []
+        , errors: _
+        }
+   else { warnings: _
+        , errors: []
+        }) <$> maybeToArray <<< head <$> traverse parsePsaError obj
   where
     maybeToArray (Just a) = [a]
     maybeToArray Nothing = []
 
-psaPrinter :: forall eff. String -> Boolean -> String -> Json -> Eff (MainEff eff) Unit
-psaPrinter successMessage  isError file err = do
+psaPrinter ∷ forall eff . String → Boolean → String → Json → Eff (MainEff eff) Unit
+psaPrinter successMessage isError file err = do
   case decodeJson err >>= parsePscidResult isError of
-    Left _ -> logAny err
-    Right out -> do
-      out' <- output loadLines defaultOptions out
+    Left _ → logAny err
+    Right out → do
+      out' ← output loadLines defaultOptions out
       print successMessage defaultOptions out'
 
       where
       loadLines filename pos = do
-        contents <- Str.split "\n" <$> File.readTextFile Encoding.UTF8 filename
+        contents ← Str.split "\n" <$> File.readTextFile Encoding.UTF8 filename
         let source = Array.slice (pos.startLine - 1) (pos.endLine) contents
-        pure $ Just source
+        pure (Just source)

@@ -62,12 +62,9 @@ main = launchAff do
     onKeypress (\k → runReaderT (keyHandler k) config)
     log ("Watching " <> directory <> " on port " <> show port)
     log owl
-    log "Press b to build (tries \"npm run build\" then \"pulp build\")"
-    log "Press t to test (tries \"npm run test\" then \"pulp test\")"
-    log "Press r to reset"
-    log "Press q to quit"
+    log helpText
 
-owl :: String
+owl ∷ String
 owl =
   """
   ___     ,_,        ___        ,_,     ___
@@ -75,6 +72,16 @@ owl =
  {`"'}   {`"'}    ';:`-':;'    {`"'}   {`"'}
  -"-"-   -"-"-                 -"-"-   -"-"-
   """
+
+helpText ∷ String
+helpText =
+  """
+Press b to run a full build (tries "npm run build" then "pulp build")
+Press t to test (tries "npm run test" then "pulp test")
+Press r to reset
+Press q to quit
+  """
+
 
 keyHandler ∷ ∀ e. Key → Pscid ( console ∷ CONSOLE , cp ∷ CHILD_PROCESS
                               , process ∷ Process.PROCESS , net ∷ NET
