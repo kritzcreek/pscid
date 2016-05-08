@@ -7,23 +7,23 @@ import Data.Set as Set
 import Data.String as Str
 import Node.Encoding as Encoding
 import Node.FS.Sync as File
+import Control.Bind ((=<<))
 import Control.Monad (when)
 import Control.Monad.Eff (Eff)
-import Control.Monad.Eff.Console.Unsafe (logAny)
 import Control.Monad.Eff.Exception (EXCEPTION)
 import Data.Argonaut (Json)
 import Data.Argonaut.Decode (decodeJson)
 import Data.Array (head, null)
-import Data.Either (Either(..))
-import Data.Maybe (Maybe(..))
-import Data.StrMap (StrMap)
+import Data.Either (Either)
+import Data.Maybe (fromMaybe, Maybe(..))
 import Data.String (joinWith)
 import Data.Traversable (traverse)
 import Node.FS (FS)
-import Psa (Output, PsaResult, parsePsaError, PsaOptions, output)
+import Psa (PsaError, PsaResult, parsePsaError, Output, PsaOptions, output)
 import Psa.Printer (renderAnsi, renderRow)
 import Psa.Printer.Default (renderError, renderWarning)
 import Psa.Util (iter_)
+import Pscid.Util (shush, (∘))
 
 defaultOptions ∷ PsaOptions
 defaultOptions =
@@ -39,52 +39,53 @@ defaultOptions =
   , cwd: ""
   }
 
-type MainEff eff =
-  ( console ∷ Console.CONSOLE
-  , err ∷ EXCEPTION
-  , fs ∷ FS
-  | eff
-  )
-
 print ∷ forall eff. String → PsaOptions → Output → Eff (console ∷ Console.CONSOLE | eff) Unit
 print successMessage options {warnings, errors} = do
   iter_ warnings \i warning → do
     Console.error (toString (renderWarning 1 1 warning))
     Console.error ""
 
-  when (null warnings && null errors)
-    (Console.error successMessage)
-
   iter_ errors \i error → do
     Console.error (toString (renderError 1 1 error))
     Console.error ""
 
+  when (null warnings && null errors)
+    (Console.error successMessage)
   where
-  toString = renderRow (joinWith "" <<< map (renderAnsi options.ansi))
+    toString = renderRow (joinWith "" ∘ map (renderAnsi options.ansi))
 
-parsePscidResult ∷ Boolean → Array (StrMap Json) → Either String PsaResult
-parsePscidResult isError obj =
-  (if isError
-   then { warnings: []
-        , errors: _
-        }
-   else { warnings: _
-        , errors: []
-        }) <$> maybeToArray <<< head <$> traverse parsePsaError obj
+parseErrors ∷ Json → Either String (Array PsaError)
+parseErrors j = traverse parsePsaError =<< decodeJson j
+
+parseFirstError ∷ Json → Maybe PsaError
+parseFirstError j = head =<< (shush (parseErrors j))
+
+emptyResult ∷ PsaResult
+emptyResult = {warnings: [], errors: []}
+
+wrapError ∷ Boolean → PsaError → PsaResult
+wrapError b e = if b
+                then { warnings: [ ], errors: [e] }
+                else { warnings: [e], errors: [ ] }
+
+psaPrinter
+  ∷ ∀ eff
+  . String
+  → Boolean
+  → Json
+  → Eff ( console ∷ Console.CONSOLE, err ∷ EXCEPTION, fs ∷ FS | eff) Unit
+psaPrinter successMessage isError err = do
+  out' ← output loadLines defaultOptions result
+  print successMessage defaultOptions out'
   where
-    maybeToArray (Just a) = [a]
-    maybeToArray Nothing = []
+    result = fromMaybe emptyResult (wrapError isError <$> parseFirstError err)
 
-psaPrinter ∷ forall eff . String → Boolean → String → Json → Eff (MainEff eff) Unit
-psaPrinter successMessage isError file err = do
-  case decodeJson err >>= parsePscidResult isError of
-    Left _ → logAny err
-    Right out → do
-      out' ← output loadLines defaultOptions out
-      print successMessage defaultOptions out'
-
-      where
-      loadLines filename pos = do
-        contents ← Str.split "\n" <$> File.readTextFile Encoding.UTF8 filename
-        let source = Array.slice (pos.startLine - 1) (pos.endLine) contents
-        pure (Just source)
+loadLines
+  ∷ ∀ a e
+  . String
+  -> { startLine :: Int , endLine :: Int | a}
+  -> Eff ( fs :: FS, err :: EXCEPTION | e) (Maybe (Array String))
+loadLines filename pos = do
+  contents ← Str.split "\n" <$> File.readTextFile Encoding.UTF8 filename
+  let source = Array.slice (pos.startLine - 1) (pos.endLine) contents
+  pure (Just source)

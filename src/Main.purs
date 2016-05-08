@@ -37,8 +37,7 @@ import Pscid.Keypress (Key(Key), onKeypress, initializeKeypresses)
 import Pscid.Options (PscidOptions, optionParser)
 import Pscid.Psa (psaPrinter)
 import Pscid.Server (restartServer, stopServer, startServer)
-
-infixr 9 compose as ∘
+import Pscid.Util ((∘))
 
 type Pscid e a = ReaderT PscidOptions (Eff e) a
 
@@ -155,7 +154,7 @@ printRebuildResult file errs =
   catchLog "An error inside psaPrinter" do
     clearConsole
     Console.log ("Checking " <> file)
-    either (psaPrinter owl true file) (psaPrinter owl false file) errs
+    either (psaPrinter owl true) (psaPrinter owl false) errs
 
 foreign import gaze
   ∷ ∀ eff
@@ -175,4 +174,3 @@ catchLog m = catchException (const (Console.error m))
 
 logColored ∷ ∀ e.Color → String → Eff (console ∷ CONSOLE | e) Unit
 logColored c = withGraphics log (foreground c)
-
