@@ -22,6 +22,7 @@ type PscidOptions =
   , testCommand       ∷ String
   , testAfterRebuild  ∷ Boolean
   , sourceDirectories ∷ Array String
+  , censorCodes       ∷ Array String
   }
 
 defaultOptions ∷ PscidOptions
@@ -31,6 +32,7 @@ defaultOptions =
   , testCommand: pulpCmd <> " test"
   , testAfterRebuild: false
   , sourceDirectories: ["src"]
+  , censorCodes: []
   }
 
 pulpCmd ∷ String
@@ -59,14 +61,17 @@ optionParser =
                       Console.error "Failed parsing the arguments."
                       Console.error "Falling back to default options"
                       mkDefaultOptions) $
-     runY setup $ (\port testAfterRebuild includes → do
+     runY setup $ (\port testAfterRebuild includes censor → do
                     let dirs = filter (not null) $ "src" `cons` split ";" includes
+                    let censorCodes = filter (not null) $ split "," censor
                     mkDefaultOptions <#> _ { port = floor (readInt 10 port)
                                            , testAfterRebuild = testAfterRebuild
                                            , sourceDirectories = dirs
+                                           , censorCodes = censorCodes
                                            })
        <$> yarg "p" ["port"] (Just "The Port") (Left "4243") false
-       <*> flag "--test" ["test"] (Just "Test project after save")
+       <*> flag "test" [] (Just "Test project after save")
        <*> yarg "I" ["include"] (Just "Additional globs for PureScript source files, separated by `;`") (Left "") false
+       <*> yarg "censor-codes" [] (Just "Warning codes to ignore, seperated by `,`") (Left "") false
 
 foreign import hasNamedScript ∷ ∀ e. String → Eff (fs ∷ FS | e) Boolean

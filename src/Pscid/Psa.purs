@@ -1,4 +1,8 @@
-module Pscid.Psa where
+module Pscid.Psa
+       ( module Psa
+       , parseErrors
+       , psaPrinter
+       ) where
 
 import Prelude
 import Control.Monad.Eff.Console as Console
@@ -10,7 +14,7 @@ import Node.FS.Sync as File
 import Control.Bind ((=<<))
 import Control.Monad (when)
 import Control.Monad.Eff (Eff)
-import Control.Monad.Eff.Exception (EXCEPTION)
+import Control.Monad.Eff.Exception (catchException, EXCEPTION)
 import Data.Argonaut (Json)
 import Data.Argonaut.Decode (decodeJson)
 import Data.Array (head, null)
@@ -72,13 +76,14 @@ psaPrinter
   ∷ ∀ eff
   . String
   → Boolean
-  → Json
-  → Eff ( console ∷ Console.CONSOLE, err ∷ EXCEPTION, fs ∷ FS | eff) Unit
-psaPrinter successMessage isError err = do
-  out' ← output loadLines defaultOptions result
-  print successMessage defaultOptions out'
-  where
-    result = fromMaybe emptyResult (wrapError isError <$> parseFirstError err)
+  → Array PsaError
+  → Eff ( console ∷ Console.CONSOLE, fs ∷ FS | eff) Unit
+psaPrinter successMessage isError errs =
+  catchException (const (Console.error "An error inside psaPrinter")) do
+    out' ← output loadLines defaultOptions result
+    print successMessage defaultOptions out'
+    where
+      result = fromMaybe emptyResult (wrapError isError <$> head errs)
 
 loadLines
   ∷ ∀ a e

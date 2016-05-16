@@ -19,9 +19,10 @@ import Control.Monad.Reader.Trans (runReaderT, ReaderT)
 import Control.Monad.ST (readSTRef, modifySTRef, newSTRef, runST)
 import Control.Monad.Trans (lift)
 import Data.Argonaut (Json)
-import Data.Array (uncons)
-import Data.Either (isRight, isLeft, Either, either)
+import Data.Array (filter, uncons)
+import Data.Either (isRight, isLeft, Either(Left, Right), either)
 import Data.Either.Unsafe (fromRight)
+import Data.Foldable (notElem)
 import Data.Function.Eff (runEffFn2, EffFn2)
 import Data.Functor (($>))
 import Data.Maybe (Maybe(Nothing))
@@ -35,7 +36,7 @@ import PscIde (sendCommandR, load, cwd, NET)
 import PscIde.Command (Command(RebuildCmd), Message(Message))
 import Pscid.Keypress (Key(Key), onKeypress, initializeKeypresses)
 import Pscid.Options (PscidOptions, optionParser)
-import Pscid.Psa (psaPrinter)
+import Pscid.Psa (PsaError, parseErrors, psaPrinter)
 import Pscid.Server (restartServer, stopServer, startServer)
 import Pscid.Util ((∘))
 
@@ -139,22 +140,39 @@ triggerRebuild
   ∷ ∀ e . String → Pscid ( cp ∷ CHILD_PROCESS, net ∷ NET
                          , console ∷ CONSOLE, fs ∷ FS | e) Unit
 triggerRebuild file = do
-  {port, testCommand, testAfterRebuild} ← ask
+  {port, testCommand, testAfterRebuild, censorCodes} ← ask
   lift ∘ catchLog "We couldn't talk to the server" $ launchAff do
     errs ← fromRight <$> sendCommandR port (RebuildCmd file)
-    liftEff (printRebuildResult file errs)
+    liftEff (handleRebuildResult file censorCodes errs)
     liftEff ∘ when (testAfterRebuild && isRight errs) $
       runCommand "Test" testCommand
 
-printRebuildResult
-  ∷ ∀ e. String
+handleRebuildResult
+  ∷ ∀ e
+  . String
+  → Array String
   → Either Json Json
   → Eff (console ∷ CONSOLE, fs ∷ FS | e) Unit
-printRebuildResult file errs =
-  catchLog "An error inside psaPrinter" do
-    clearConsole
-    Console.log ("Checking " <> file)
-    either (psaPrinter owl true) (psaPrinter owl false) errs
+handleRebuildResult file censorCodes result = do
+  clearConsole
+  log ("Checking " <> file)
+  case both parseErrors result of
+    Right warnings →
+      either
+        (const (log "Failed to parse warnings"))
+        (psaPrinter owl false)
+        (filterWarnings censorCodes <$> warnings)
+    Left errors →
+      either (const (log "Failed to parse errors")) (psaPrinter owl true) errors
+
+filterWarnings ∷ Array String → Array PsaError → Array PsaError
+filterWarnings ignored errors =
+  filter (\e → e.errorCode `notElem` ignored) errors
+
+both ∷ forall a b. (a → b) → Either a a → Either b b
+both f e = case e of
+  Right x → Right (f x)
+  Left x → Left (f x)
 
 foreign import gaze
   ∷ ∀ eff
