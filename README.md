@@ -1,4 +1,4 @@
-[![npm version](https://badge.fury.io/js/pscid.svg)](https://badge.fury.io/js/pscid) 
+[![npm version](https://badge.fury.io/js/pscid.svg)](https://badge.fury.io/js/pscid)
 [![Dependency Status](https://www.versioneye.com/user/projects/5714bac7fcd19a004544136d/badge.svg?style=flat)](https://www.versioneye.com/user/projects/5714bac7fcd19a004544136d)
 
 pscid
@@ -23,6 +23,17 @@ Type `b` inside `pscid`'s terminal window to build your project. This looks up t
 Type `t` inside `pscid`'s terminal window to test your project. As with building this looks up the `test` script in package.json first, and falls back to `pulp test` otherwise.
 
 Type `q` to quit pscid.
+
+### Suggestions
+
+Some warnings carry a suggestion from the compiler (for example redundant
+imports). `pscid` will prompt you to press `s` inside the terminal window when
+it encounters such a warning, and automatically apply the suggestion for you.
+
+#### CAREFUL: This modifies the file in place.
+
+If something goes horribly wrong you might lose your uncommited changes. Commit
+often and trust in the types I guess...
 
 ### Demo
 
