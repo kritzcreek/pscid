@@ -1,6 +1,5 @@
 {
   "name": "pscid",
-  "version": "1.0.0",
   "moduleType": [
     "node"
   ],
@@ -23,7 +22,7 @@
     "purescript-node-process": "^0.5.0",
     "purescript-transformers": "^0.8.4",
     "purescript-refs": "^0.2.0",
-    "purescript-suggest": "nwolverson/purescript-suggest#v0.1.0"
+    "purescript-suggest": "^0.1.1"
   },
   "resolutions": {
     "purescript-argonaut-codecs": "^0.6.0"

@@ -206,7 +206,7 @@ filterWarnings ∷ Array String → Array PsaError → Array PsaError
 filterWarnings ignored errors =
   filter (\e → e.errorCode `notElem` ignored) errors
 
-both ∷ forall a b. (a → b) → Either a a → Either b b
+both ∷ ∀ a b. (a → b) → Either a a → Either b b
 both f e = case e of
   Right x → Right (f x)
   Left x → Left (f x)
