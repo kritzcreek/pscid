@@ -2,6 +2,7 @@ module Pscid.Psa
        ( module Psa
        , parseErrors
        , psaPrinter
+       , filterWarnings
        ) where
 
 import Prelude
@@ -17,8 +18,9 @@ import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Exception (catchException, EXCEPTION)
 import Data.Argonaut (Json)
 import Data.Argonaut.Decode (decodeJson)
-import Data.Array (head, null)
+import Data.Array (filter, head, null)
 import Data.Either (Either)
+import Data.Foldable (notElem)
 import Data.Maybe (fromMaybe, Maybe(..))
 import Data.String (joinWith)
 import Data.Traversable (traverse)
@@ -94,3 +96,7 @@ loadLines filename pos = do
   contents ← Str.split "\n" <$> File.readTextFile Encoding.UTF8 filename
   let source = Array.slice (pos.startLine - 1) (pos.endLine) contents
   pure (Just source)
+
+filterWarnings ∷ Array String → Array PsaError → Array PsaError
+filterWarnings ignored errors =
+  filter (\e → e.errorCode `notElem` ignored) errors

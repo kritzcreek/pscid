@@ -4,7 +4,6 @@ import Prelude
 import Control.Monad.Eff.Console as Console
 import Node.Process as Process
 import Ansi.Codes (Color(Blue, Green, Red))
-import Ansi.Output (foreground, withGraphics)
 import Control.Apply ((*>))
 import Control.Bind ((=<<))
 import Control.Monad (when)
@@ -20,9 +19,8 @@ import Control.Monad.Reader.Trans (runReaderT, ReaderT)
 import Control.Monad.ST (readSTRef, modifySTRef, newSTRef, runST)
 import Control.Monad.Trans (lift)
 import Data.Argonaut (Json)
-import Data.Array (null, head, filter, uncons)
+import Data.Array (head, uncons, null)
 import Data.Either (isRight, isLeft, Either(Left, Right), either)
-import Data.Foldable (notElem)
 import Data.Function.Eff (runEffFn2, EffFn2)
 import Data.Functor (($>))
 import Data.Maybe (Maybe(Just, Nothing))
@@ -34,11 +32,12 @@ import Node.FS (FS)
 import Node.Stream (onDataString)
 import PscIde (sendCommandR, load, cwd, NET)
 import PscIde.Command (Command(RebuildCmd), Message(Message))
+import Pscid.Console (clearConsole, owl, startScreen, logColored)
 import Pscid.Keypress (Key(Key), onKeypress, initializeKeypresses)
 import Pscid.Options (PscidOptions, optionParser)
-import Pscid.Psa (PsaError, parseErrors, psaPrinter)
+import Pscid.Psa (filterWarnings, PsaError, parseErrors, psaPrinter)
 import Pscid.Server (restartServer, stopServer, startServer)
-import Pscid.Util ((∘))
+import Pscid.Util (both, (∘))
 import Suggest (applySuggestions)
 
 type Pscid e a = ReaderT PscidOptions (Eff e) a
@@ -82,26 +81,7 @@ main = launchAff do
     initializeKeypresses
     onKeypress (\k → runReaderT (keyHandler stateRef k) config)
     log ("Watching " <> directory <> " on port " <> show port)
-    log owl
-    logColored Blue helpText
-
-owl ∷ String
-owl =
-  """
-  ___     ,_,        ___        ,_,     ___
- (o,o)   (o,o)   ,,,(o,o),,,   (o,o)   (o,o)
- {`"'}   {`"'}    ';:`-':;'    {`"'}   {`"'}
- -"-"-   -"-"-                 -"-"-   -"-"-
-  """
-
-helpText ∷ String
-helpText =
-  """
-Press b to run a full build (tries "npm run build" then "pulp build")
-Press t to test (tries "npm run test" then "pulp test")
-Press r to reset
-Press q to quit
-  """
+    startScreen
 
 keyHandler
   ∷ ∀ e
@@ -210,23 +190,12 @@ handleRebuildResult file censorCodes result = do
         (\e → psaPrinter owl true e $> e)
         errors
 
-filterWarnings ∷ Array String → Array PsaError → Array PsaError
-filterWarnings ignored errors =
-  filter (\e → e.errorCode `notElem` ignored) errors
-
-both ∷ ∀ a b. (a → b) → Either a a → Either b b
-both f e = case e of
-  Right x → Right (f x)
-  Left x → Left (f x)
-
 foreign import gaze
   ∷ ∀ eff
   . EffFn2 (fs ∷ FS | eff)
       (Array String)
       (String → Eff (fs ∷ FS | eff) Unit)
       Unit
-
-foreign import clearConsole ∷ ∀ e. Eff (console ∷ CONSOLE | e) Unit
 
 catchLog
   ∷ ∀ e
@@ -235,5 +204,3 @@ catchLog
   → Eff (console ∷ CONSOLE | e) Unit
 catchLog m = catchException (const (Console.error m))
 
-logColored ∷ ∀ e. Color → String → Eff (console ∷ CONSOLE | e) Unit
-logColored c = withGraphics log (foreground c)
