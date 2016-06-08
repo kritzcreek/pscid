@@ -20,7 +20,7 @@ import Control.Monad.Reader.Trans (runReaderT, ReaderT)
 import Control.Monad.ST (readSTRef, modifySTRef, newSTRef, runST)
 import Control.Monad.Trans (lift)
 import Data.Argonaut (Json)
-import Data.Array (head, filter, uncons)
+import Data.Array (null, head, filter, uncons)
 import Data.Either (isRight, isLeft, Either(Left, Right), either)
 import Data.Foldable (notElem)
 import Data.Function.Eff (runEffFn2, EffFn2)
@@ -54,6 +54,14 @@ main ∷ ∀ e. Eff ( err ∷ EXCEPTION, cp ∷ CHILD_PROCESS
                 , ref :: REF | e) Unit
 main = launchAff do
   config@{ port, sourceDirectories } ← liftEff optionParser
+  when (null sourceDirectories) $ liftEff do
+    logColored Red "ERROR:"
+    log "I couldn't find any source directories to watch."
+    log "I tried app/, src/, test/ and tests/."
+    log "You can specify your own semicolon separated list of"
+    log "folders to check with the -I option like so:"
+    log "pscid -I \"sources;tests\""
+    Process.exit 1
   stateRef <- liftEff (newRef emptyState)
   liftEff (log "Starting psc-ide-server")
   r ← attempt (startServer "psc-ide-server" port Nothing)
@@ -227,5 +235,5 @@ catchLog
   → Eff (console ∷ CONSOLE | e) Unit
 catchLog m = catchException (const (Console.error m))
 
-logColored ∷ ∀ e.Color → String → Eff (console ∷ CONSOLE | e) Unit
+logColored ∷ ∀ e. Color → String → Eff (console ∷ CONSOLE | e) Unit
 logColored c = withGraphics log (foreground c)

@@ -24,6 +24,7 @@
   "license": "GPL-3.0",
   "dependencies": {
     "gaze": "^1.0.0",
+    "glob": "^7.0.3",
     "keypress": "^0.2.1",
     "which": "^1.2.8",
     "yargs": "^4.6.0"

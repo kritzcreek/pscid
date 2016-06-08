@@ -15,3 +15,9 @@ exports.hasNamedScript = function(name){
     }
   };
 };
+
+exports.glob = function(pattern) {
+  return function() {
+    return require('glob').sync(pattern);
+  };
+};
