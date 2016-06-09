@@ -1,40 +1,35 @@
 module Main where
 
 import Prelude
-import Control.Monad.Eff.Console as Console
 import Node.Process as Process
-import Ansi.Codes (Color(Blue, Green, Red))
+import Ansi.Codes (Color(Blue))
 import Control.Apply ((*>))
-import Control.Bind ((=<<))
 import Control.Monad (when)
 import Control.Monad.Aff (attempt, runAff, launchAff, later')
 import Control.Monad.Aff.AVar (AVAR)
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Class (liftEff)
 import Control.Monad.Eff.Console (log, CONSOLE)
-import Control.Monad.Eff.Exception (catchException, EXCEPTION)
+import Control.Monad.Eff.Exception (EXCEPTION)
 import Control.Monad.Eff.Ref (writeRef, readRef, Ref, newRef, REF)
 import Control.Monad.Reader.Class (ask)
 import Control.Monad.Reader.Trans (runReaderT, ReaderT)
-import Control.Monad.ST (readSTRef, modifySTRef, newSTRef, runST)
-import Control.Monad.Trans (lift)
+import Control.Monad.ST (runST)
 import Data.Argonaut (Json)
-import Data.Array (head, uncons, null)
+import Data.Array (head, null)
 import Data.Either (isRight, isLeft, Either(Left, Right), either)
 import Data.Function.Eff (runEffFn2, EffFn2)
 import Data.Functor (($>))
 import Data.Maybe (Maybe(Just, Nothing))
-import Data.Maybe.Unsafe (fromJust)
-import Data.String (split)
-import Node.ChildProcess (CHILD_PROCESS, stderr, stdout, Exit(BySignal, Normally), onExit, defaultSpawnOptions, spawn)
-import Node.Encoding (Encoding(UTF8))
+import Node.ChildProcess (CHILD_PROCESS)
 import Node.FS (FS)
-import Node.Stream (onDataString)
 import PscIde (sendCommandR, load, cwd, NET)
 import PscIde.Command (Command(RebuildCmd), Message(Message))
 import Pscid.Console (clearConsole, owl, startScreen, logColored)
+import Pscid.Error (catchLog, noSourceDirectoryError)
 import Pscid.Keypress (Key(Key), onKeypress, initializeKeypresses)
 import Pscid.Options (PscidOptions, optionParser)
+import Pscid.Process (execCommand)
 import Pscid.Psa (filterWarnings, PsaError, parseErrors, psaPrinter)
 import Pscid.Server (restartServer, stopServer, startServer)
 import Pscid.Util (both, (∘))
@@ -53,14 +48,7 @@ main ∷ ∀ e. Eff ( err ∷ EXCEPTION, cp ∷ CHILD_PROCESS
                 , ref :: REF | e) Unit
 main = launchAff do
   config@{ port, sourceDirectories } ← liftEff optionParser
-  when (null sourceDirectories) $ liftEff do
-    logColored Red "ERROR:"
-    log "I couldn't find any source directories to watch."
-    log "I tried app/, src/, test/ and tests/."
-    log "You can specify your own semicolon separated list of"
-    log "folders to check with the -I option like so:"
-    log "pscid -I \"sources;tests\""
-    Process.exit 1
+  when (null sourceDirectories) (liftEff noSourceDirectoryError)
   stateRef <- liftEff (newRef emptyState)
   liftEff (log "Starting psc-ide-server")
   r ← attempt (startServer "psc-ide-server" port Nothing)
@@ -94,9 +82,9 @@ keyHandler stateRef k = do
   {port, buildCommand, testCommand} ← ask
   case k of
     Key {ctrl: false, name: "b", meta: false, shift: false} →
-      liftEff (runCommand "Build" buildCommand)
+      liftEff (execCommand "Build" buildCommand)
     Key {ctrl: false, name: "t", meta: false, shift: false} →
-      liftEff (runCommand "Test" testCommand)
+      liftEff (execCommand "Test" testCommand)
     Key {ctrl: false, name: "r", meta: false, shift: false} → liftEff do
       clearConsole
       catchLog "Failed to restart server" $ launchAff do
@@ -118,35 +106,6 @@ keyHandler stateRef k = do
     exit ∷ ∀ a eff. a → Eff (process ∷ Process.PROCESS | eff) Unit
     exit = const (Process.exit 0)
 
-runCommand
-  ∷ ∀ e
-  . String
-  → String
-  → Eff (cp ∷ CHILD_PROCESS, console ∷ CONSOLE | e) Unit
-runCommand name command =
-   catchLog (name <> " threw an exception") $
-    runST do
-      let cmd = fromJust (uncons (split " " command))
-      output ← newSTRef ""
-      log ("Running: \"" <> command <> "\"")
-      cp ← spawn cmd.head cmd.tail defaultSpawnOptions
-
-      let stout = stdout cp
-          sterr = stderr cp
-
-      onDataString stout UTF8 \s →
-        modifySTRef output (_ <> s) $> unit
-
-      onDataString sterr UTF8 \s →
-        modifySTRef output (_ <> s) $> unit
-
-      onExit cp \e → case e of
-        Normally 0 → logColored Green (name <> " successful!")
-        Normally code → do
-          log =<< readSTRef output
-          logColored Red (name <> " errored with code: " <> show code)
-        BySignal _       → pure unit
-
 triggerRebuild
   ∷ ∀ e
   . Ref State
@@ -156,7 +115,7 @@ triggerRebuild
           , ref ∷ REF| e) Unit
 triggerRebuild stateRef file = do
   {port, testCommand, testAfterRebuild, censorCodes} ← ask
-  lift ∘ catchLog "We couldn't talk to the server" $ launchAff do
+  liftEff ∘ catchLog "We couldn't talk to the server" $ launchAff do
     result ← sendCommandR port (RebuildCmd file)
     case result of
       Left _ → liftEff (log "We couldn't talk to the server")
@@ -166,8 +125,8 @@ triggerRebuild stateRef file = do
         case head parsedErrors >>= _.suggestion of
           Nothing → pure unit
           Just s → liftEff (logColored Blue "Press s to automatically apply the suggestion.")
-        liftEff ∘ when (testAfterRebuild && isRight errs) $
-          runCommand "Test" testCommand
+        liftEff $ when (testAfterRebuild && isRight errs)
+          (execCommand "Test" testCommand)
 
 handleRebuildResult
   ∷ ∀ e
@@ -196,11 +155,4 @@ foreign import gaze
       (Array String)
       (String → Eff (fs ∷ FS | eff) Unit)
       Unit
-
-catchLog
-  ∷ ∀ e
-  . String
-  → Eff (console ∷ CONSOLE, err ∷ EXCEPTION | e) Unit
-  → Eff (console ∷ CONSOLE | e) Unit
-catchLog m = catchException (const (Console.error m))
 
