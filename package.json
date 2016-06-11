@@ -10,6 +10,7 @@
     "test": "test"
   },
   "scripts": {
+    "compile": "psa -c -f \"src/**/*.js\" -f \"bower_components/purescript-*/src/**/*.js\" \"src/**/*.purs\" \"bower_components/purescript-*/src/**/*.purs\"",
     "prepublish": "rm -rf output && npm run compile",
     "build": "npm run -s compile"
   },
