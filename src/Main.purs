@@ -11,13 +11,14 @@ import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Class (liftEff)
 import Control.Monad.Eff.Console (log, CONSOLE)
 import Control.Monad.Eff.Exception (EXCEPTION)
+import Control.Monad.Eff.Random (RANDOM)
 import Control.Monad.Eff.Ref (writeRef, readRef, Ref, newRef, REF)
 import Control.Monad.Reader.Class (ask)
 import Control.Monad.Reader.Trans (runReaderT, ReaderT)
 import Control.Monad.ST (runST)
 import Data.Argonaut (Json)
 import Data.Array (head, null)
-import Data.Either (isRight, isLeft, Either(Left, Right), either)
+import Data.Either (isRight, Either(Left, Right), either)
 import Data.Function.Eff (runEffFn2, EffFn2)
 import Data.Functor (($>))
 import Data.Maybe (Maybe(Just, Nothing))
@@ -28,14 +29,14 @@ import PscIde.Command (Command(RebuildCmd), Message(Message))
 import Pscid.Console (clearConsole, owl, startScreen, logColored)
 import Pscid.Error (catchLog, noSourceDirectoryError)
 import Pscid.Keypress (Key(Key), onKeypress, initializeKeypresses)
-import Pscid.Options (PscidOptions, optionParser)
+import Pscid.Options (PscidSettings, optionParser)
 import Pscid.Process (execCommand)
 import Pscid.Psa (filterWarnings, PsaError, parseErrors, psaPrinter)
-import Pscid.Server (restartServer, stopServer, startServer)
+import Pscid.Server (restartServer, startServer', stopServer')
 import Pscid.Util (both, (∘))
 import Suggest (applySuggestions)
 
-type Pscid e a = ReaderT PscidOptions (Eff e) a
+type Pscid e a = ReaderT (PscidSettings Int) (Eff e) a
 
 newtype State = State { errors :: Array PsaError }
 
@@ -45,31 +46,36 @@ emptyState = State { errors: [] }
 main ∷ ∀ e. Eff ( err ∷ EXCEPTION, cp ∷ CHILD_PROCESS
                 , console ∷ CONSOLE , net ∷ NET
                 , avar ∷ AVAR, fs ∷ FS, process ∷ Process.PROCESS
+                , random :: RANDOM
                 , ref :: REF | e) Unit
 main = launchAff do
   config@{ port, sourceDirectories } ← liftEff optionParser
   when (null sourceDirectories) (liftEff noSourceDirectoryError)
   stateRef <- liftEff (newRef emptyState)
   liftEff (log "Starting psc-ide-server")
-  r ← attempt (startServer "psc-ide-server" port Nothing)
-  when (isLeft r) (restartServer port)
-  Message directory ← later' 100 do
-    load port [] []
-    res ← cwd port
-    case res of
-      Right d → pure d
-      Left err → liftEff do
-        log err
-        Process.exit 1
-  liftEff do
-    runEffFn2 gaze
-      (sourceDirectories <#> \g → directory <> "/" <> g <> "/**/*.purs")
-      (\d → runReaderT (triggerRebuild stateRef d) config)
-    clearConsole
-    initializeKeypresses
-    onKeypress (\k → runReaderT (keyHandler stateRef k) config)
-    log ("Watching " <> directory <> " on port " <> show port)
-    startScreen
+  r ← attempt (startServer' port)
+  case r of
+    Right (Right port') -> do
+      let config' = config { port = port' }
+      Message directory ← later' 100 do
+        load port' [] []
+        res ← cwd port'
+        case res of
+          Right d → pure d
+          Left err → liftEff do
+            log err
+            Process.exit 1
+      liftEff do
+        runEffFn2 gaze
+          (sourceDirectories <#> \g → directory <> "/" <> g <> "/**/*.purs")
+          (\d → runReaderT (triggerRebuild stateRef d) config')
+        clearConsole
+        initializeKeypresses
+        onKeypress (\k → runReaderT (keyHandler stateRef k) config')
+        log ("Watching " <> directory <> " on port " <> show port')
+        startScreen
+    _ -> liftEff (log "Failed to start psc-ide-server")
+
 
 keyHandler
   ∷ ∀ e
@@ -77,6 +83,7 @@ keyHandler
   → Key
   → Pscid ( console ∷ CONSOLE , cp ∷ CHILD_PROCESS
           , process ∷ Process.PROCESS , net ∷ NET
+          , err :: EXCEPTION
           , fs ∷ FS, avar ∷ AVAR, ref ∷ REF | e) Unit
 keyHandler stateRef k = do
   {port, buildCommand, testCommand} ← ask
@@ -99,7 +106,7 @@ keyHandler stateRef k = do
         Just e →
           catchLog "Couldn't apply suggestion." (runST (applySuggestions [e]))
     Key {ctrl: false, name: "q", meta: false, shift: false} →
-      liftEff (log "Bye!" *> runAff exit exit (stopServer port))
+      liftEff (log "Bye!" *> runAff exit exit (stopServer' port))
     Key {ctrl, name, meta, shift} →
       liftEff (log name)
   where
@@ -155,4 +162,3 @@ foreign import gaze
       (Array String)
       (String → Eff (fs ∷ FS | eff) Unit)
       Unit
-
