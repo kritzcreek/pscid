@@ -41,7 +41,7 @@ defaultOptions =
 
 -- | Scans the default directories and returns those, that did contain
 -- | PureScript files.
-scanDefaultDirectories :: forall e. Eff (fs :: FS | e) (Array String)
+scanDefaultDirectories ∷ ∀ e. Eff (fs ∷ FS | e) (Array String)
 scanDefaultDirectories =
   let
     defaultDirectories = ["src", "app", "test", "tests"]
@@ -95,14 +95,14 @@ optionParser =
          false
 
 buildOptions
-  :: forall e
+  ∷ ∀ e
   . String
-  -> Boolean
-  -> String
-  -> String
-  -> Eff (fs :: FS | e) PscidOptions
+  → Boolean
+  → String
+  → String
+  → Eff (fs ∷ FS | e) PscidOptions
 buildOptions port testAfterRebuild includes censor = do
-  defaults <- mkDefaultOptions
+  defaults ← mkDefaultOptions
   let sourceDirectories =
         if null includes
         then defaults.sourceDirectories
@@ -117,4 +117,4 @@ buildOptions port testAfterRebuild includes censor = do
        }
 
 foreign import hasNamedScript ∷ ∀ e. String → Eff (fs ∷ FS | e) Boolean
-foreign import glob :: forall e. String -> Eff (fs :: FS | e) (Array String)
+foreign import glob ∷ ∀ e. String → Eff (fs ∷ FS | e) (Array String)

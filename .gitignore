@@ -6,3 +6,4 @@
 /src/.webpack.js
 /.psa-stash
 .DS_Store
+/.psc-ide-port

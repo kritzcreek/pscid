@@ -13,7 +13,6 @@ import Data.String as Str
 import Node.Encoding as Encoding
 import Node.FS.Sync as File
 import Control.Bind ((=<<))
-import Control.Monad (when)
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Exception (catchException, EXCEPTION)
 import Data.Argonaut (Json)
@@ -45,7 +44,7 @@ defaultOptions =
   , cwd: ""
   }
 
-print ∷ forall eff. String → PsaOptions → Output → Eff (console ∷ Console.CONSOLE | eff) Unit
+print ∷ ∀ eff. String → PsaOptions → Output → Eff (console ∷ Console.CONSOLE | eff) Unit
 print successMessage options {warnings, errors} = do
   iter_ warnings \i warning → do
     Console.error (toString (renderWarning 1 1 warning))
@@ -90,8 +89,8 @@ psaPrinter successMessage isError errs =
 loadLines
   ∷ ∀ a e
   . String
-  -> { startLine :: Int , endLine :: Int | a}
-  -> Eff ( fs :: FS, err :: EXCEPTION | e) (Maybe (Array String))
+  → { startLine ∷ Int , endLine ∷ Int | a}
+  → Eff ( fs ∷ FS, err ∷ EXCEPTION | e) (Maybe (Array String))
 loadLines filename pos = do
   contents ← Str.split "\n" <$> File.readTextFile Encoding.UTF8 filename
   let source = Array.slice (pos.startLine - 1) (pos.endLine) contents

@@ -8,11 +8,12 @@ import Control.Monad.Eff.Console (log, CONSOLE)
 import Control.Monad.ST (readSTRef, modifySTRef, newSTRef, runST)
 import Data.Array (uncons)
 import Data.Functor (($>))
-import Data.Maybe.Unsafe (fromJust)
+import Data.Maybe (fromJust)
 import Data.String (split)
 import Node.ChildProcess (Exit(BySignal, Normally), onExit, stderr, stdout, defaultSpawnOptions, spawn, CHILD_PROCESS)
 import Node.Encoding (Encoding(UTF8))
 import Node.Stream (onDataString)
+import Partial.Unsafe (unsafePartial)
 import Pscid.Console (logColored)
 import Pscid.Error (catchLog)
 
@@ -24,7 +25,7 @@ execCommand
 execCommand name command =
    catchLog (name <> " threw an exception") $
     runST do
-      let cmd = fromJust (uncons (split " " command))
+      let cmd = unsafePartial fromJust (uncons (split " " command))
       output ← newSTRef ""
       log ("Running: \"" <> command <> "\"")
       cp ← spawn cmd.head cmd.tail defaultSpawnOptions

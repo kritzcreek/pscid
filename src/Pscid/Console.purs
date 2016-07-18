@@ -27,7 +27,7 @@ Press r to reset
 Press q to quit
   """
 
-startScreen :: forall e. Eff (console :: CONSOLE | e) Unit
+startScreen ∷ ∀ e. Eff (console ∷ CONSOLE | e) Unit
 startScreen = do
   log owl
   logColored Blue helpText
