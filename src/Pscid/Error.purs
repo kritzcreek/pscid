@@ -17,10 +17,8 @@ catchLog
 catchLog m = catchException (const (Console.error m))
 
 noSourceDirectoryError
-  :: forall e
-  . Eff ( console :: CONSOLE
-        , process :: Process.PROCESS
-        | e) Unit
+  ∷ ∀ e
+  . Eff (console ∷ CONSOLE, process ∷ Process.PROCESS | e) Unit
 noSourceDirectoryError = do
   logColored Red "ERROR:"
   log helpString
