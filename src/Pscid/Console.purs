@@ -32,4 +32,8 @@ startScreen = do
   log owl
   logColored Blue helpText
 
+suggestionHint ∷ ∀ e. Eff (console ∷ CONSOLE | e) Unit
+suggestionHint = 
+  logColored Blue "Press s to automatically apply the suggestion."
+
 foreign import clearConsole ∷ ∀ e. Eff (console ∷ CONSOLE | e) Unit

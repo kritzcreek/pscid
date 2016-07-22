@@ -35,7 +35,7 @@ defaultOptions =
   , buildCommand: pulpCmd <> " build"
   , testCommand: pulpCmd <> " test"
   , testAfterRebuild: false
-  , sourceDirectories: ["src", "test"]
+  , sourceDirectories: []
   , censorCodes: []
   }
 
@@ -86,7 +86,7 @@ optionParser =
        <$> yarg "p" ["port"] (Just "The Port") (Left "") false
        <*> flag "test" [] (Just "Test project after save")
        <*> yarg "I" ["include"]
-         (Just "Additional globs for PureScript source files, separated by `;`")
+         (Just "Directories for PureScript source files, separated by `;`")
          (Left "")
          false
        <*> yarg "censor-codes" []

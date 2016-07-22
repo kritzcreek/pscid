@@ -1,8 +1,8 @@
 module Main where
 
 import Prelude
+import Data.String as String
 import Node.Process as Process
-import Ansi.Codes (Color(Blue))
 import Control.Apply ((*>))
 import Control.Monad.Aff (runAff, later', attempt)
 import Control.Monad.Aff.AVar (AVAR)
@@ -16,7 +16,7 @@ import Control.Monad.Reader.Class (ask)
 import Control.Monad.Reader.Trans (runReaderT, ReaderT)
 import Control.Monad.ST (runST)
 import Data.Argonaut (Json)
-import Data.Array (head, null)
+import Data.Array (concatMap, head, null)
 import Data.Either (isRight, Either(Left, Right), either)
 import Data.Function.Eff (runEffFn2, EffFn2)
 import Data.Functor (($>))
@@ -25,7 +25,7 @@ import Node.ChildProcess (CHILD_PROCESS)
 import Node.FS (FS)
 import PscIde (sendCommandR, load, cwd, NET)
 import PscIde.Command (Command(RebuildCmd), Message(Message))
-import Pscid.Console (clearConsole, owl, startScreen, logColored)
+import Pscid.Console (owl, clearConsole, suggestionHint, startScreen)
 import Pscid.Error (catchLog, noSourceDirectoryError)
 import Pscid.Keypress (Key(Key), onKeypress, initializeKeypresses)
 import Pscid.Options (PscidSettings, optionParser)
@@ -70,7 +70,7 @@ main = launchAffVoid do
             Process.exit 1
       liftEff do
         runEffFn2 gaze
-          (sourceDirectories <#> \g → directory <> "/" <> g <> "/**/*.purs")
+          (concatMap (fileGlob directory) sourceDirectories)
           (\d → runReaderT (triggerRebuild stateRef d) config')
         clearConsole
         initializeKeypresses
@@ -79,13 +79,23 @@ main = launchAffVoid do
         startScreen
     _ → liftEff (log "Failed to start psc-ide-server")
 
+-- | Given a base directory and a directory, appends the globs necessary to
+-- | match all PureScript and JavaScript source files inside that directory
+fileGlob :: String -> String -> Array String
+fileGlob base dir =
+  let go x = base <> "/" <> dir <> "/**/*" <> x
+  in go <$> [".purs", ".js"]
+
 keyHandler
   ∷ ∀ e
   . Ref State
   → Key
-  → Pscid ( console ∷ CONSOLE , cp ∷ CHILD_PROCESS
-          , process ∷ Process.PROCESS , net ∷ NET
-          , fs ∷ FS, avar ∷ AVAR, ref ∷ REF
+  → Pscid ( console ∷ CONSOLE
+          , cp ∷ CHILD_PROCESS
+          , process ∷ Process.PROCESS
+          , net ∷ NET
+          , fs ∷ FS, avar ∷ AVAR
+          , ref ∷ REF
           , random ∷ RANDOM | e) Unit
 keyHandler stateRef k = do
   {port, buildCommand, testCommand} ← ask
@@ -124,18 +134,24 @@ triggerRebuild
           , ref ∷ REF| e) Unit
 triggerRebuild stateRef file = do
   {port, testCommand, testAfterRebuild, censorCodes} ← ask
+  let fileName = changeExtension file "purs"
   liftEff ∘ catchLog "We couldn't talk to the server" $ launchAffVoid do
-    result ← sendCommandR port (RebuildCmd file)
+    result ← sendCommandR port (RebuildCmd fileName)
     case result of
       Left _ → liftEff (log "We couldn't talk to the server")
-      Right errs → do
-        parsedErrors ← liftEff (handleRebuildResult file censorCodes errs)
-        liftEff (writeRef stateRef (State {errors: parsedErrors}))
+      Right errs → liftEff do
+        parsedErrors ← handleRebuildResult fileName censorCodes errs
+        writeRef stateRef (State {errors: parsedErrors})
         case head parsedErrors >>= _.suggestion of
           Nothing → pure unit
-          Just s → liftEff (logColored Blue "Press s to automatically apply the suggestion.")
-        liftEff $ when (testAfterRebuild && isRight errs)
+          Just s → suggestionHint
+        when (testAfterRebuild && isRight errs)
           (execCommand "Test" testCommand)
+
+changeExtension :: String -> String -> String
+changeExtension s ex = case String.lastIndexOf "." s of
+  Nothing -> s
+  Just ix -> String.take ix s <> "." <> ex
 
 handleRebuildResult
   ∷ ∀ e
