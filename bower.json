@@ -9,6 +9,7 @@
     "bower_components",
     "output"
   ],
+  "license": "LGPL-3.0",
   "repository": "https://github.com/kritzcreek/pscid.git",
   "dependencies": {
     "purescript-console": "^1.0.0",
@@ -23,5 +24,8 @@
     "purescript-transformers": "^1.0.0",
     "purescript-refs": "^1.0.0",
     "purescript-suggest": "^1.0.1"
+  },
+  "devDependencies": {
+    "purescript-psci-support": "^1.0.0"
   }
 }
