@@ -12,7 +12,6 @@ import Data.Set as Set
 import Data.String as Str
 import Node.Encoding as Encoding
 import Node.FS.Sync as File
-import Control.Bind ((=<<))
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Exception (catchException, EXCEPTION)
 import Data.Argonaut (Json)
@@ -21,7 +20,7 @@ import Data.Array (filter, head, null)
 import Data.Either (Either)
 import Data.Foldable (notElem)
 import Data.Maybe (fromMaybe, Maybe(..))
-import Data.String (joinWith)
+import Data.String (Pattern(Pattern), joinWith)
 import Data.Traversable (traverse)
 import Node.FS (FS)
 import Psa (PsaError, PsaResult, parsePsaError, Output, PsaOptions, output)
@@ -92,7 +91,7 @@ loadLines
   → { startLine ∷ Int , endLine ∷ Int | a}
   → Eff ( fs ∷ FS, err ∷ EXCEPTION | e) (Maybe (Array String))
 loadLines filename pos = do
-  contents ← Str.split "\n" <$> File.readTextFile Encoding.UTF8 filename
+  contents ← Str.split (Pattern "\n") <$> File.readTextFile Encoding.UTF8 filename
   let source = Array.slice (pos.startLine - 1) (pos.endLine) contents
   pure (Just source)
 

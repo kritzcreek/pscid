@@ -3,7 +3,6 @@ module Main where
 import Prelude
 import Data.String as String
 import Node.Process as Process
-import Control.Apply ((*>))
 import Control.Monad.Aff (runAff, later', attempt)
 import Control.Monad.Aff.AVar (AVAR)
 import Control.Monad.Eff (Eff)
@@ -19,8 +18,8 @@ import Data.Argonaut (Json)
 import Data.Array (concatMap, head, null)
 import Data.Either (isRight, Either(Left, Right), either)
 import Data.Function.Eff (runEffFn2, EffFn2)
-import Data.Functor (($>))
 import Data.Maybe (Maybe(Just, Nothing))
+import Data.String (Pattern(Pattern))
 import Node.ChildProcess (CHILD_PROCESS)
 import Node.FS (FS)
 import PscIde (sendCommandR, load, cwd, NET)
@@ -149,7 +148,7 @@ triggerRebuild stateRef file = do
           (execCommand "Test" testCommand)
 
 changeExtension :: String -> String -> String
-changeExtension s ex = case String.lastIndexOf "." s of
+changeExtension s ex = case String.lastIndexOf (Pattern ".") s of
   Nothing -> s
   Just ix -> String.take ix s <> "." <> ex
 

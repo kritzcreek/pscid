@@ -12,20 +12,16 @@
   "license": "LGPL-3.0",
   "repository": "https://github.com/kritzcreek/pscid.git",
   "dependencies": {
-    "purescript-console": "^1.0.0",
-    "purescript-aff": "^1.0.0",
-    "purescript-psc-ide": "^5.0.0",
-    "purescript-node-child-process": "^2.0.0",
-    "purescript-eff-functions": "^1.0.0",
-    "purescript-ansi": "^1.0.0",
-    "purescript-psa-utils": "^1.0.1",
-    "purescript-yargs": "^1.0.0",
-    "purescript-node-process": "^2.0.0",
-    "purescript-transformers": "^1.0.0",
-    "purescript-refs": "^1.0.0",
-    "purescript-suggest": "^1.0.1"
+    "purescript-transformers": "^2.0.1",
+    "purescript-psc-ide": "^7.0.0",
+    "purescript-psa-utils": "^2.0.0",
+    "purescript-yargs": "^2.0.0",
+    "purescript-node-streams": "^2.0.0",
+    "purescript-node-process": "^3.0.0",
+    "purescript-eff-functions": "^2.0.0",
+    "purescript-suggest": "^2.1.1"
   },
   "devDependencies": {
-    "purescript-psci-support": "^1.0.0"
+    "purescript-psci-support": "^2.0.0"
   }
 }

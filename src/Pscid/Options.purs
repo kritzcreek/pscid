@@ -9,7 +9,7 @@ import Data.Array (filter, filterM)
 import Data.Either (Either(Left))
 import Data.Int (fromNumber)
 import Data.Maybe (Maybe(..))
-import Data.String (split, null)
+import Data.String (Pattern(Pattern), split, null)
 import Global (readInt)
 import Node.FS (FS)
 import Node.Platform (Platform(Win32))
@@ -106,8 +106,8 @@ buildOptions port testAfterRebuild includes censor = do
   let sourceDirectories =
         if null includes
         then defaults.sourceDirectories
-        else filter (not null) (split ";" includes)
-      censorCodes = filter (not null) (split "," censor)
+        else filter (not null) (split (Pattern ";") includes)
+      censorCodes = filter (not null) (split (Pattern ",") censor)
   pure { port: fromNumber (readInt 10 port)
        , testAfterRebuild
        , sourceDirectories
