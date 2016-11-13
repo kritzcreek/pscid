@@ -80,7 +80,7 @@ main = launchAffVoid do
 
 -- | Given a base directory and a directory, appends the globs necessary to
 -- | match all PureScript and JavaScript source files inside that directory
-fileGlob :: String -> String -> Array String
+fileGlob ∷ String → String → Array String
 fileGlob base dir =
   let go x = base <> "/" <> dir <> "/**/*" <> x
   in go <$> [".purs", ".js"]
@@ -147,10 +147,10 @@ triggerRebuild stateRef file = do
         when (testAfterRebuild && isRight errs)
           (execCommand "Test" testCommand)
 
-changeExtension :: String -> String -> String
+changeExtension ∷ String → String → String
 changeExtension s ex = case String.lastIndexOf (Pattern ".") s of
-  Nothing -> s
-  Just ix -> String.take ix s <> "." <> ex
+  Nothing → s
+  Just ix → String.take ix s <> "." <> ex
 
 handleRebuildResult
   ∷ ∀ e
