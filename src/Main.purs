@@ -49,7 +49,8 @@ main ∷ ∀ e. Eff ( cp ∷ CHILD_PROCESS
                 , process ∷ Process.PROCESS
                 , random ∷ RANDOM
                 , ref ∷ REF
-                , err ∷ EXCEPTION | e) Unit
+                , err ∷ EXCEPTION
+                | e ) Unit
 main = launchAffVoid do
   config@{ port, sourceDirectories } ← liftEff optionParser
   when (null sourceDirectories) (liftEff noSourceDirectoryError)
@@ -90,12 +91,13 @@ keyHandler
   . Ref State
   → Key
   → Pscid ( console ∷ CONSOLE
-          , cp ∷ CHILD_PROCESS
-          , process ∷ Process.PROCESS
-          , net ∷ NET
-          , fs ∷ FS, avar ∷ AVAR
-          , ref ∷ REF
-          , random ∷ RANDOM | e) Unit
+           , cp ∷ CHILD_PROCESS
+           , process ∷ Process.PROCESS
+           , net ∷ NET
+           , fs ∷ FS, avar ∷ AVAR
+           , ref ∷ REF
+           , random ∷ RANDOM
+           | e) Unit
 keyHandler stateRef k = do
   {port, buildCommand, testCommand} ← ask
   case k of
