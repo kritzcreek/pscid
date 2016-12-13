@@ -6,19 +6,20 @@ import Data.Array as Array
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Exception (catchException)
 import Data.Array (filter, filterM)
-import Data.Either (Either(Left))
+import Data.Either (Either(..))
 import Data.Int (fromNumber)
 import Data.Maybe (Maybe(..))
-import Data.String (Pattern(Pattern), split, null)
+import Data.Newtype (class Newtype, unwrap, wrap)
+import Data.String (Pattern(..), split, null)
 import Global (readInt)
 import Node.FS (FS)
-import Node.Platform (Platform(Win32))
+import Node.Platform (Platform(..))
 import Node.Process (platform)
 import Node.Yargs.Applicative (flag, yarg, runY)
 import Node.Yargs.Setup (example, usage, defaultHelp, defaultVersion)
 import Pscid.Util ((∘))
 
-type PscidSettings a =
+newtype PscidSettings a = PscidSettings
   { port              ∷ a
   , buildCommand      ∷ String
   , testCommand       ∷ String
@@ -27,10 +28,12 @@ type PscidSettings a =
   , censorCodes       ∷ Array String
   }
 
+derive instance newtypePscidSetting ∷ Newtype (PscidSettings a) _
+
 type PscidOptions = PscidSettings (Maybe Int)
 
 defaultOptions ∷ PscidOptions
-defaultOptions =
+defaultOptions = PscidSettings
   { port: Nothing
   , buildCommand: pulpCmd <> " build"
   , testCommand: pulpCmd <> " test"
@@ -57,13 +60,13 @@ npmCmd = if platform == Win32 then "npm.cmd" else "npm"
 
 mkDefaultOptions ∷ ∀ e. Eff (fs ∷ FS | e) PscidOptions
 mkDefaultOptions =
-  defaultOptions { buildCommand = _
-                 , testCommand = _
-                 , sourceDirectories = _
-                 }
-  <$> mkCommand "build"
-  <*> mkCommand "test"
-  <*> scanDefaultDirectories
+  wrap <$> collectData (unwrap defaultOptions)
+  where
+    collectData x =
+      x {buildCommand = _, testCommand = _, sourceDirectories = _}
+      <$> mkCommand "build"
+      <*> mkCommand "test"
+      <*> scanDefaultDirectories
 
 mkCommand ∷ ∀ e. String → Eff (fs ∷ FS | e) String
 mkCommand cmd =
@@ -102,19 +105,19 @@ buildOptions
   → String
   → Eff (fs ∷ FS | e) PscidOptions
 buildOptions port testAfterRebuild includes censor = do
-  defaults ← mkDefaultOptions
+  defaults ← unwrap <$> mkDefaultOptions
   let sourceDirectories =
         if null includes
         then defaults.sourceDirectories
         else filter (not null) (split (Pattern ";") includes)
       censorCodes = filter (not null) (split (Pattern ",") censor)
-  pure { port: fromNumber (readInt 10 port)
-       , testAfterRebuild
-       , sourceDirectories
-       , censorCodes
-       , buildCommand: defaults.buildCommand
-       , testCommand: defaults.testCommand
-       }
+  pure (wrap { port: fromNumber (readInt 10 port)
+             , testAfterRebuild
+             , sourceDirectories
+             , censorCodes
+             , buildCommand: defaults.buildCommand
+             , testCommand: defaults.testCommand
+             })
 
 foreign import hasNamedScript ∷ ∀ e. String → Eff (fs ∷ FS | e) Boolean
 foreign import glob ∷ ∀ e. String → Eff (fs ∷ FS | e) (Array String)

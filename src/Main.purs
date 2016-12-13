@@ -1,24 +1,27 @@
 module Main where
 
 import Prelude
+import Control.Monad.Reader.Class as Reader
 import Data.String as String
 import Node.Process as Process
 import Control.Monad.Aff (runAff, later', attempt)
 import Control.Monad.Aff.AVar (AVAR)
 import Control.Monad.Eff (Eff)
-import Control.Monad.Eff.Class (liftEff)
+import Control.Monad.Eff.Class (class MonadEff, liftEff)
 import Control.Monad.Eff.Console (log, CONSOLE)
 import Control.Monad.Eff.Exception (EXCEPTION)
 import Control.Monad.Eff.Random (RANDOM)
 import Control.Monad.Eff.Ref (writeRef, readRef, Ref, newRef, REF)
-import Control.Monad.Reader.Class (ask)
-import Control.Monad.Reader.Trans (runReaderT, ReaderT)
+import Control.Monad.Eff.Unsafe (unsafeCoerceEff)
+import Control.Monad.Reader (class MonadAsk)
+import Control.Monad.Reader.Trans (ReaderT, runReaderT)
 import Control.Monad.ST (runST)
 import Data.Argonaut (Json)
 import Data.Array (concatMap, head, null)
 import Data.Either (isRight, Either(Left, Right), either)
 import Data.Function.Eff (runEffFn2, EffFn2)
 import Data.Maybe (Maybe(Just, Nothing))
+import Data.Newtype (unwrap, wrap)
 import Data.String (Pattern(Pattern))
 import Node.ChildProcess (CHILD_PROCESS)
 import Node.FS (FS)
@@ -34,32 +37,46 @@ import Pscid.Server (restartServer, startServer', stopServer')
 import Pscid.Util (launchAffVoid, both, (∘))
 import Suggest (applySuggestions)
 
-type Pscid e a = ReaderT (PscidSettings Int) (Eff e) a
+type PscidEffects = PscidEffects' ()
+
+type PscidEffects' e =
+  ( cp ∷ CHILD_PROCESS
+  , console ∷ CONSOLE
+  , net ∷ NET
+  , avar ∷ AVAR
+  , fs ∷ FS
+  , process ∷ Process.PROCESS
+  , random ∷ RANDOM
+  , ref ∷ REF
+  | e
+  )
+
+newtype Pscid a = Pscid (ReaderT (PscidSettings Int) (Eff PscidEffects) a)
+derive newtype instance functorPscid ∷ Functor Pscid
+derive newtype instance bindPscid ∷ Bind Pscid
+derive newtype instance monadPscid ∷ Monad Pscid
+derive newtype instance monadAskPscid ∷ MonadAsk (PscidSettings Int) Pscid
+instance monadEffPscid ∷ MonadEff e Pscid where
+  liftEff f = Pscid (liftEff (unsafeCoerceEff f))
+
+runPscid ∷ ∀ a. Pscid a → PscidSettings Int → Eff PscidEffects a
+runPscid (Pscid f) e = runReaderT f e
 
 newtype State = State { errors ∷ Array PsaError }
 
 emptyState ∷ State
 emptyState = State { errors: [] }
 
-main ∷ ∀ e. Eff ( cp ∷ CHILD_PROCESS
-                , console ∷ CONSOLE
-                , net ∷ NET
-                , avar ∷ AVAR
-                , fs ∷ FS
-                , process ∷ Process.PROCESS
-                , random ∷ RANDOM
-                , ref ∷ REF
-                , err ∷ EXCEPTION
-                | e ) Unit
+main ∷ Eff (PscidEffects' (err ∷ EXCEPTION)) Unit
 main = launchAffVoid do
-  config@{ port, sourceDirectories } ← liftEff optionParser
+  config@{ port, sourceDirectories } ← unwrap <$> liftEff optionParser
   when (null sourceDirectories) (liftEff noSourceDirectoryError)
   stateRef ← liftEff (newRef emptyState)
   liftEff (log "Starting psc-ide-server")
   r ← attempt (startServer' port)
   case r of
     Right (Right port') → do
-      let config' = config { port = port' }
+      let config' = wrap (config { port = port' })
       Message directory ← later' 500 do
         load port' [] []
         res ← cwd port'
@@ -71,10 +88,10 @@ main = launchAffVoid do
       liftEff do
         runEffFn2 gaze
           (concatMap (fileGlob directory) sourceDirectories)
-          (\d → runReaderT (triggerRebuild stateRef d) config')
+          (\d → runPscid (triggerRebuild stateRef d) config')
         clearConsole
         initializeKeypresses
-        onKeypress (\k → runReaderT (keyHandler stateRef k) config')
+        onKeypress (\k → runPscid (keyHandler stateRef k) config')
         log ("Watching " <> directory <> " on port " <> show port')
         startScreen
     _ → liftEff (log "Failed to start psc-ide-server")
@@ -86,18 +103,7 @@ fileGlob base dir =
   let go x = base <> "/" <> dir <> "/**/*" <> x
   in go <$> [".purs", ".js"]
 
-keyHandler
-  ∷ ∀ e
-  . Ref State
-  → Key
-  → Pscid ( console ∷ CONSOLE
-           , cp ∷ CHILD_PROCESS
-           , process ∷ Process.PROCESS
-           , net ∷ NET
-           , fs ∷ FS, avar ∷ AVAR
-           , ref ∷ REF
-           , random ∷ RANDOM
-           | e) Unit
+keyHandler ∷ Ref State → Key → Pscid Unit
 keyHandler stateRef k = do
   {port, buildCommand, testCommand} ← ask
   case k of
@@ -126,13 +132,7 @@ keyHandler stateRef k = do
     exit ∷ ∀ a eff. a → Eff (process ∷ Process.PROCESS | eff) Unit
     exit = const (Process.exit 0)
 
-triggerRebuild
-  ∷ ∀ e
-  . Ref State
-  → String
-  → Pscid ( cp ∷ CHILD_PROCESS, net ∷ NET
-          , console ∷ CONSOLE, fs ∷ FS
-          , ref ∷ REF| e) Unit
+triggerRebuild ∷ Ref State → String → Pscid Unit
 triggerRebuild stateRef file = do
   {port, testCommand, testAfterRebuild, censorCodes} ← ask
   let fileName = changeExtension file "purs"
@@ -150,9 +150,12 @@ triggerRebuild stateRef file = do
           (execCommand "Test" testCommand)
 
 changeExtension ∷ String → String → String
-changeExtension s ex = case String.lastIndexOf (Pattern ".") s of
-  Nothing → s
-  Just ix → String.take ix s <> "." <> ex
+changeExtension s ex =
+  case String.lastIndexOf (Pattern ".") s of
+    Nothing →
+      s
+    Just ix →
+      String.take ix s <> "." <> ex
 
 handleRebuildResult
   ∷ ∀ e
@@ -181,3 +184,12 @@ foreign import gaze
       (Array String)
       (String → Eff (fs ∷ FS | eff) Unit)
       Unit
+
+ask ∷ Pscid { port ∷ Int
+             , buildCommand ∷ String
+             , testCommand ∷ String
+             , testAfterRebuild ∷ Boolean
+             , sourceDirectories ∷ Array String
+             , censorCodes ∷ Array String
+             }
+ask = unwrap <$> Reader.ask
