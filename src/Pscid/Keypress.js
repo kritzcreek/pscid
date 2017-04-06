@@ -12,9 +12,6 @@ exports.onKeypress = function(cb){
   return function(){
     process.stdin.on('keypress', function (ch, key){
       if (key) {
-        if (key.ctrl && key.name == 'c') {
-          process.exit();
-        }
         cb(key)();
       }
     });
