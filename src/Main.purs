@@ -126,6 +126,8 @@ keyHandler stateRef k = do
           catchLog "Couldn't apply suggestion." (runST (applySuggestions [e]))
     Key {ctrl: false, name: "q", meta: false, shift: false} →
       liftEff (log "Bye!" <* runAff exit exit (stopServer' port))
+    Key {ctrl: true, name: "c", meta: false, shift: false} →
+      liftEff (log "Press q to exit")
     Key {ctrl, name, meta, shift} →
       liftEff (log name)
   where
