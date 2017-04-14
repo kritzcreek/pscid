@@ -17,5 +17,5 @@ both f e = case e of
   Right x → Right (f x)
   Left x → Left (f x)
 
-launchAffVoid ∷ ∀ a e. Aff e a → Eff (err ∷ EXCEPTION | e) Unit
+launchAffVoid ∷ ∀ a e. Aff e a → Eff (exception ∷ EXCEPTION | e) Unit
 launchAffVoid a = void (launchAff a)

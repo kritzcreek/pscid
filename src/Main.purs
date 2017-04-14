@@ -4,7 +4,7 @@ import Prelude
 import Control.Monad.Reader.Class as Reader
 import Data.String as String
 import Node.Process as Process
-import Control.Monad.Aff (runAff, later', attempt)
+import Control.Monad.Aff (runAff, delay, attempt)
 import Control.Monad.Aff.AVar (AVAR)
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Class (class MonadEff, liftEff)
@@ -12,6 +12,7 @@ import Control.Monad.Eff.Console (log, CONSOLE)
 import Control.Monad.Eff.Exception (EXCEPTION)
 import Control.Monad.Eff.Random (RANDOM)
 import Control.Monad.Eff.Ref (writeRef, readRef, Ref, newRef, REF)
+import Control.Monad.Eff.Uncurried (runEffFn2, EffFn2)
 import Control.Monad.Eff.Unsafe (unsafeCoerceEff)
 import Control.Monad.Reader (class MonadAsk)
 import Control.Monad.Reader.Trans (ReaderT, runReaderT)
@@ -19,10 +20,10 @@ import Control.Monad.ST (runST)
 import Data.Argonaut (Json)
 import Data.Array (concatMap, head, null)
 import Data.Either (isRight, Either(..), either)
-import Data.Function.Eff (runEffFn2, EffFn2)
 import Data.Maybe (Maybe(Just, Nothing))
 import Data.Newtype (unwrap, wrap)
 import Data.String (Pattern(..))
+import Data.Time.Duration (Milliseconds(..))
 import Node.ChildProcess (CHILD_PROCESS)
 import Node.FS (FS)
 import PscIde (sendCommandR, load, cwd, NET)
@@ -67,18 +68,19 @@ newtype State = State { errors ∷ Array PsaError }
 emptyState ∷ State
 emptyState = State { errors: [] }
 
-main ∷ Eff (PscidEffects' (err ∷ EXCEPTION)) Unit
+main ∷ Eff (PscidEffects' (exception ∷ EXCEPTION)) Unit
 main = launchAffVoid do
   config@{ port, sourceDirectories } ← unwrap <$> liftEff optionParser
   when (null sourceDirectories) (liftEff noSourceDirectoryError)
   stateRef ← liftEff (newRef emptyState)
-  liftEff (log "Starting psc-ide-server")
+  liftEff (log "Starting purs ide server")
   r ← attempt (startServer' port)
   case r of
     Right (Right port') → do
       let config' = wrap (config { port = port' })
-      Message directory ← later' 500 do
-        load port' [] []
+      Message directory ← do
+        delay (Milliseconds 500.0)
+        _ ← load port' [] []
         res ← cwd port'
         case res of
           Right d → pure d

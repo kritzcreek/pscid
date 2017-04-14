@@ -89,7 +89,7 @@ loadLines
   ∷ ∀ a e
   . String
   → { startLine ∷ Int , endLine ∷ Int | a}
-  → Eff ( fs ∷ FS, err ∷ EXCEPTION | e) (Maybe (Array String))
+  → Eff ( fs ∷ FS, exception ∷ EXCEPTION | e) (Maybe (Array String))
 loadLines filename pos = do
   contents ← Str.split (Pattern "\n") <$> File.readTextFile Encoding.UTF8 filename
   let source = Array.slice (pos.startLine - 1) (pos.endLine) contents
