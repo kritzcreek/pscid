@@ -11,7 +11,7 @@
   },
   "scripts": {
     "compile": "psa -c \"src/**/*.purs\" \"bower_components/purescript-*/src/**/*.purs\"",
-    "prepublish": "rm -rf output && npm run compile",
+    "prepublish": "rimraf output && npm run compile",
     "build": "npm run -s compile",
     "start": "node index.js"
   },
@@ -29,6 +29,7 @@
     "yargs": "^4.6.0"
   },
   "devDependencies": {
-    "purescript-psa": "^0.5.1"
+    "purescript-psa": "^0.5.1",
+    "rimraf": "^2.6.1"
   }
 }
