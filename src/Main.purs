@@ -1,9 +1,7 @@
 module Main where
 
 import Prelude
-import Control.Monad.Reader.Class as Reader
-import Data.String as String
-import Node.Process as Process
+
 import Control.Monad.Aff (runAff, delay, attempt)
 import Control.Monad.Aff.AVar (AVAR)
 import Control.Monad.Eff (Eff)
@@ -15,6 +13,7 @@ import Control.Monad.Eff.Ref (writeRef, readRef, Ref, newRef, REF)
 import Control.Monad.Eff.Uncurried (runEffFn2, EffFn2)
 import Control.Monad.Eff.Unsafe (unsafeCoerceEff)
 import Control.Monad.Reader (class MonadAsk)
+import Control.Monad.Reader.Class as Reader
 import Control.Monad.Reader.Trans (ReaderT, runReaderT)
 import Control.Monad.ST (runST)
 import Data.Argonaut (Json)
@@ -23,9 +22,11 @@ import Data.Either (isRight, Either(..), either)
 import Data.Maybe (Maybe(Just, Nothing))
 import Data.Newtype (unwrap, wrap)
 import Data.String (Pattern(..))
+import Data.String as String
 import Data.Time.Duration (Milliseconds(..))
 import Node.ChildProcess (CHILD_PROCESS)
 import Node.FS (FS)
+import Node.Process as Process
 import PscIde (sendCommandR, load, cwd, NET)
 import PscIde.Command (Command(..), Message(..))
 import Pscid.Console (owl, clearConsole, suggestionHint, startScreen)
@@ -54,6 +55,8 @@ type PscidEffects' e =
 
 newtype Pscid a = Pscid (ReaderT (PscidSettings Int) (Eff PscidEffects) a)
 derive newtype instance functorPscid ∷ Functor Pscid
+derive newtype instance applyPscid ∷ Apply Pscid
+derive newtype instance applicativePscid ∷ Applicative Pscid
 derive newtype instance bindPscid ∷ Bind Pscid
 derive newtype instance monadPscid ∷ Monad Pscid
 derive newtype instance monadAskPscid ∷ MonadAsk (PscidSettings Int) Pscid
