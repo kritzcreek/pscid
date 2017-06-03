@@ -5,7 +5,7 @@ import Control.Monad.Eff.Console as Console
 import Data.Array as Array
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Exception (catchException)
-import Data.Array (filter, filterM)
+import Data.Array (filter, filterA)
 import Data.Either (Either(..))
 import Data.Int (fromNumber)
 import Data.Maybe (Maybe(..))
@@ -50,7 +50,7 @@ scanDefaultDirectories =
     defaultDirectories = ["src", "app", "test", "tests"]
     mkGlob dir = dir <> "/**/*.purs"
   in
-   filterM (map (not ∘ Array.null) ∘ glob ∘ mkGlob) defaultDirectories
+   filterA (map (not ∘ Array.null) ∘ glob ∘ mkGlob) defaultDirectories
 
 pulpCmd ∷ String
 pulpCmd = if platform == Win32 then "pulp.cmd" else "pulp"

@@ -12,7 +12,7 @@ import Pscid.Console (logColored)
 catchLog
   ∷ ∀ e
   . String
-  → Eff (console ∷ CONSOLE, err ∷ EXCEPTION | e) Unit
+  → Eff (console ∷ CONSOLE, exception ∷ EXCEPTION | e) Unit
   → Eff (console ∷ CONSOLE | e) Unit
 catchLog m = catchException (const (Console.error m))
 
