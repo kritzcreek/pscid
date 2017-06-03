@@ -27,5 +27,8 @@
     "keypress": "^0.2.1",
     "which": "^1.2.12",
     "yargs": "^4.6.0"
+  },
+  "devDependencies": {
+    "purescript-psa": "^0.5.1"
   }
 }
