@@ -5,10 +5,6 @@ import Ansi.Codes (Color(Blue))
 import Ansi.Output (foreground, withGraphics)
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Console (CONSOLE, log)
-import Control.Monad.Eff.Exception (try)
-import Node.Encoding (Encoding(..))
-import Node.Process (stdout)
-import Node.Stream (writeString)
 
 logColored ∷ ∀ e. Color → String → Eff (console ∷ CONSOLE | e) Unit
 logColored c = withGraphics log (foreground c)
@@ -40,5 +36,4 @@ suggestionHint ∷ ∀ e. Eff (console ∷ CONSOLE | e) Unit
 suggestionHint =
   logColored Blue "Press s to automatically apply the suggestion."
 
-clearConsole ∷ ∀ e. Eff (console ∷ CONSOLE | e) Unit
-clearConsole = void (try (writeString stdout UTF8 "\x1b[2J\x1b[;H" (pure unit)))
+foreign import clearConsole ∷ ∀ e. Eff (console ∷ CONSOLE | e) Unit
