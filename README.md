@@ -8,8 +8,6 @@ An editor agnostic minimal IDE for your shell. Think `pulp -w build` on steroids
 
 ### Installation
 
-Requires purescript >= v0.8.5 to be installed.
-
 `npm i -g pscid`
 
 ### Usage
@@ -53,7 +51,7 @@ It's inspired by https://github.com/ndmitchell/ghcid and https://github.com/antt
 
 ### LICENSE
 
-Copyright 2016 Christoph Hegemann and Contributors
+Copyright 2017 Christoph Hegemann and Contributors
 
 This program is free software: you can redistribute it and/or modify it under the terms of the GNU Lesser General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 
