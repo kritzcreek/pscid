@@ -20,7 +20,7 @@
     "purescript"
   ],
   "author": "kritzcreek",
-  "license": "GPL-3.0",
+  "license": "LGPL-3.0",
   "dependencies": {
     "gaze": "^1.1.2",
     "glob": "^7.1.1",
