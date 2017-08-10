@@ -53,10 +53,10 @@ scanDefaultDirectories =
    filterA (map (not ∘ Array.null) ∘ glob ∘ mkGlob) defaultDirectories
 
 pulpCmd ∷ String
-pulpCmd = if platform == Win32 then "pulp.cmd" else "pulp"
+pulpCmd = if platform == Just Win32 then "pulp.cmd" else "pulp"
 
 npmCmd ∷ String
-npmCmd = if platform == Win32 then "npm.cmd" else "npm"
+npmCmd = if platform == Just Win32 then "npm.cmd" else "npm"
 
 mkDefaultOptions ∷ ∀ e. Eff (fs ∷ FS | e) PscidOptions
 mkDefaultOptions =
