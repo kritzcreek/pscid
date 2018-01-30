@@ -6,24 +6,25 @@ module Pscid.Psa
        ) where
 
 import Prelude
-import Control.Monad.Eff.Console as Console
-import Data.Array as Array
-import Data.Set as Set
-import Data.String as Str
-import Node.Encoding as Encoding
-import Node.FS.Sync as File
+
 import Control.Monad.Eff (Eff)
+import Control.Monad.Eff.Console as Console
 import Control.Monad.Eff.Exception (catchException, EXCEPTION)
 import Data.Argonaut (Json)
 import Data.Argonaut.Decode (decodeJson)
 import Data.Array (filter, head, null)
+import Data.Array as Array
 import Data.Either (Either)
 import Data.Foldable (notElem)
 import Data.Maybe (fromMaybe, Maybe(..))
+import Data.Set as Set
 import Data.String (Pattern(Pattern), joinWith)
+import Data.String as Str
 import Data.Traversable (traverse)
+import Node.Encoding as Encoding
 import Node.FS (FS)
-import Psa (PsaError, PsaResult, parsePsaError, Output, PsaOptions, output)
+import Node.FS.Sync as File
+import Psa (Output, PsaError, PsaOptions, PsaResult, StatVerbosity(..), output, parsePsaError)
 import Psa.Printer (renderAnsi, renderRow)
 import Psa.Printer.Default (renderError, renderWarning)
 import Psa.Util (iter_)
@@ -37,10 +38,10 @@ defaultOptions =
   , censorSrc: false
   , censorCodes: Set.empty
   , filterCodes: Set.empty
-  , verboseStats: false
   , libDirs: []
   , strict: false
   , cwd: ""
+  , statVerbosity: NoStats
   }
 
 print ∷ ∀ eff. String → PsaOptions → Output → Eff (console ∷ Console.CONSOLE | eff) Unit
