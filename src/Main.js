@@ -11,7 +11,10 @@ exports.gaze = function(globs, cb){
     var watched = watcher.watched();
 
     watcher.on('changed', function(filepath) {
-      console.log(filepath);
+      cb(filepath)();
+    });
+
+    watcher.on('added', function(filepath) {
       cb(filepath)();
     });
   });

@@ -92,7 +92,7 @@ main = launchAffVoid do
             Process.exit 1
       liftEff do
         runEffFn2 gaze
-          (concatMap (fileGlob directory) sourceDirectories)
+          (concatMap fileGlob sourceDirectories)
           (\d → runPscid (triggerRebuild stateRef d) config')
         clearConsole
         initializeKeypresses
@@ -101,11 +101,11 @@ main = launchAffVoid do
         startScreen
     _ → liftEff (log "Failed to start psc-ide-server")
 
--- | Given a base directory and a directory, appends the globs necessary to
--- | match all PureScript and JavaScript source files inside that directory
-fileGlob ∷ String → String → Array String
-fileGlob base dir =
-  let go x = base <> "/" <> dir <> "/**/*" <> x
+-- | Given a directory, appends the globs necessary to match all PureScript and
+-- | JavaScript source files inside that directory
+fileGlob ∷ String → Array String
+fileGlob dir =
+  let go x = dir <> "/**/*" <> x
   in go <$> [".purs", ".js"]
 
 keyHandler ∷ Ref State → Key → Pscid Unit
