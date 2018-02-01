@@ -2,7 +2,7 @@ module Main where
 
 import Prelude
 
-import Control.Monad.Aff (runAff, delay, attempt)
+import Control.Monad.Aff (attempt, delay, runAff)
 import Control.Monad.Aff.AVar (AVAR)
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Class (class MonadEff, liftEff)
@@ -144,7 +144,7 @@ triggerRebuild stateRef file = do
   {port, testCommand, testAfterRebuild, censorCodes} ← ask
   let fileName = changeExtension file "purs"
   liftEff ∘ catchLog "We couldn't talk to the server" $ launchAffVoid do
-    result ← sendCommandR port (RebuildCmd fileName)
+    result ← sendCommandR port (RebuildCmd fileName Nothing)
     case result of
       Left _ → liftEff (log "We couldn't talk to the server")
       Right errs → liftEff do
