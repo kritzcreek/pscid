@@ -29,7 +29,7 @@
     "yargs": "^4.6.0"
   },
   "devDependencies": {
-    "purescript-psa": "^0.5.1",
+    "purescript-psa": "^0.6.0",
     "rimraf": "^2.6.1"
   }
 }

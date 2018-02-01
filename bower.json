@@ -13,12 +13,12 @@
   "repository": "https://github.com/kritzcreek/pscid.git",
   "dependencies": {
     "purescript-transformers": "^3.2.0",
-    "purescript-psc-ide": "^9.0.0",
-    "purescript-psa-utils": "^3.0.0",
+    "purescript-psc-ide": "^10.0.0",
+    "purescript-psa-utils": "^4.0.0",
     "purescript-yargs": "^3.0.0",
     "purescript-node-streams": "^3.0.0",
     "purescript-node-process": "^5.0.0",
-    "purescript-suggest": "^2.3.0",
+    "purescript-suggest": "^3.0.0",
     "purescript-arrays": "^4.0.1"
   },
   "devDependencies": {
