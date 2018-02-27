@@ -22,6 +22,7 @@ import Pscid.Util ((∘))
 newtype PscidSettings a = PscidSettings
   { port              ∷ a
   , buildCommand      ∷ String
+  , outputDirectory   ∷ String
   , testCommand       ∷ String
   , testAfterRebuild  ∷ Boolean
   , sourceDirectories ∷ Array String
@@ -36,6 +37,7 @@ defaultOptions ∷ PscidOptions
 defaultOptions = PscidSettings
   { port: Nothing
   , buildCommand: pulpCmd <> " build"
+  , outputDirectory: "output"
   , testCommand: pulpCmd <> " test"
   , testAfterRebuild: false
   , sourceDirectories: []
@@ -92,6 +94,10 @@ optionParser =
          (Just "Directories for PureScript source files, separated by `;`")
          (Left "")
          false
+       <*> yarg "O" ["output"]
+         (Just "Output directory for compiled JavaScript")
+         (Left "output")
+         false
        <*> yarg "censor-codes" []
          (Just "Warning codes to ignore, seperated by `,`")
          (Left "")
@@ -103,8 +109,9 @@ buildOptions
   → Boolean
   → String
   → String
+  → String
   → Eff (fs ∷ FS | e) PscidOptions
-buildOptions port testAfterRebuild includes censor = do
+buildOptions port testAfterRebuild includes outputDirectory censor = do
   defaults ← unwrap <$> mkDefaultOptions
   let sourceDirectories =
         if null includes
@@ -116,6 +123,7 @@ buildOptions port testAfterRebuild includes censor = do
              , sourceDirectories
              , censorCodes
              , buildCommand: defaults.buildCommand
+             , outputDirectory
              , testCommand: defaults.testCommand
              })
 
