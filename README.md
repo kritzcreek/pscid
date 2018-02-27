@@ -42,6 +42,7 @@ often and trust in the types I guess...
   - `--include -I <dir;dir;...>`  Additional directories for PureScript source files, separated by `;`
   - `--censor-codes <UnusedTypeVar,...>` Warning codes to ignore, seperated by `,` (just like in purescript-psa)
   - `--test` Runs your tests after every successful rebuild
+  - `-O/--output` Specifies what output directory to use to load the externs for the server
 
 ### Attribution
 
