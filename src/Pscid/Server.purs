@@ -43,8 +43,9 @@ type StartServerEff e =
 startServer'
   ∷ ∀ e
   . Maybe Int
+  → String
   → Aff (StartServerEff e) (Either String Int)
-startServer' optPort = do
+startServer' optPort outputDir = do
   dir ← liftEff Process.cwd
   port ← liftEff (getSavedPort dir)
   case optPort <|> port of
@@ -64,7 +65,13 @@ startServer' optPort = do
     newPort ← maybe (liftEff pickFreshPort) pure optPort
     _ ← liftEff (try (savePort newPort dir))
     r newPort <$>
-      startServer (defaultServerArgs {port = Just newPort, cwd = Just dir})
+      startServer
+        ( defaultServerArgs
+            { port = Just newPort
+            , cwd = Just dir
+            , outputDirectory = Just outputDir
+            }
+        )
     where
       r newPort (Started _)    = Right newPort
       r _       (Closed)       = Left "Closed"
@@ -73,10 +80,11 @@ startServer' optPort = do
 restartServer
   ∷ ∀ e
   . Int
+  → String
   → Aff (StartServerEff e) Unit
-restartServer port = do
+restartServer port outputDir = do
   _ ← attempt (stopServer port)
-  r ← attempt (startServer' (Just port))
+  r ← attempt (startServer' (Just port) outputDir)
   liftEff case r of
     Left e → do
       log ("Failed to restart psc-ide-server on port: " <> show port

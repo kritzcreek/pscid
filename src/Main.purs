@@ -73,11 +73,11 @@ emptyState = State { errors: [] }
 
 main ∷ Eff (PscidEffects' (exception ∷ EXCEPTION)) Unit
 main = launchAffVoid do
-  config@{ port, sourceDirectories } ← unwrap <$> liftEff optionParser
+  config@{ port, outputDirectory, sourceDirectories } ← unwrap <$> liftEff optionParser
   when (null sourceDirectories) (liftEff noSourceDirectoryError)
   stateRef ← liftEff (newRef emptyState)
   liftEff (log "Starting purs ide server")
-  r ← attempt (startServer' port)
+  r ← attempt (startServer' port outputDirectory)
   case r of
     Right (Right port') → do
       let config' = wrap (config { port = port' })
@@ -110,7 +110,7 @@ fileGlob dir =
 
 keyHandler ∷ Ref State → Key → Pscid Unit
 keyHandler stateRef k = do
-  {port, buildCommand, testCommand} ← ask
+  {port, buildCommand, outputDirectory, testCommand} ← ask
   case k of
     Key {ctrl: false, name: "b", meta: false, shift: false} →
       liftEff (execCommand "Build" buildCommand)
@@ -119,7 +119,7 @@ keyHandler stateRef k = do
     Key {ctrl: false, name: "r", meta: false, shift: false} → liftEff do
       clearConsole
       catchLog "Failed to restart server" $ launchAffVoid do
-        restartServer port
+        restartServer port outputDirectory
         load port [] []
       log owl
     Key {ctrl: false, name: "s", meta: false, shift: false} → liftEff do
@@ -194,6 +194,7 @@ foreign import gaze
 
 ask ∷ Pscid { port ∷ Int
              , buildCommand ∷ String
+             , outputDirectory ∷ String
              , testCommand ∷ String
              , testAfterRebuild ∷ Boolean
              , sourceDirectories ∷ Array String
