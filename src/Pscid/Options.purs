@@ -1,14 +1,16 @@
 module Pscid.Options where
 
 import Prelude
+import Control.Alternative ((<|>))
 import Control.Monad.Eff.Console as Console
 import Data.Array as Array
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Exception (catchException)
+import Control.MonadZero (guard)
 import Data.Array (filter, filterA)
 import Data.Either (Either(..))
 import Data.Int (fromNumber)
-import Data.Maybe (Maybe(..))
+import Data.Maybe (Maybe(..), fromMaybe)
 import Data.Newtype (class Newtype, unwrap, wrap)
 import Data.String (Pattern(..), split, null)
 import Global (readInt)
@@ -71,9 +73,15 @@ mkDefaultOptions =
       <*> scanDefaultDirectories
 
 mkCommand ∷ ∀ e. String → Eff (fs ∷ FS | e) String
-mkCommand cmd =
-  hasNamedScript cmd <#> \b →
-    (if b then npmCmd <> " run -s " else pulpCmd <> " ") <> cmd
+mkCommand cmd = do
+  pscidSpecific ← hasNamedScript ("pscid:" <> cmd)
+  namedScript   ← hasNamedScript cmd
+
+  let specificCommand = guard pscidSpecific $> "npm run build -s pscid:"
+      buildCommand    = guard namedScript   $> "npm run build -s "
+      pulpCommand     = pulpCmd <> " "
+
+  pure $ fromMaybe pulpCommand (specificCommand <|> buildCommand) <> cmd
 
 optionParser ∷ ∀ e. Eff (console ∷ Console.CONSOLE, fs ∷ FS | e) PscidOptions
 optionParser =

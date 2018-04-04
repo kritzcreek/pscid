@@ -16,9 +16,9 @@ Start `pscid` in a terminal in the root folder of your project.
 
 pscid will show you errors and warnings (one at a time) whenever you save a PureScript source file. This makes for a nice iterative workflow.
 
-Type `b` inside `pscid`'s terminal window to build your project. This looks up the `build` script inside your package.json and failing to find that will run `pulp build`.
+Type `b` inside `pscid`'s terminal window to build your project. This looks up the `pscid:build` script inside your package.json, then falls back to the `build` script, and then finally tries `pulp build`.
 
-Type `t` inside `pscid`'s terminal window to test your project. As with building this looks up the `test` script in package.json first, and falls back to `pulp test` otherwise.
+Type `t` inside `pscid`'s terminal window to test your project. As with building this looks up the `pscid:test` script first, then `test`, then falls back to `pulp test` as a last resort.
 
 Type `q` to quit pscid.
 
