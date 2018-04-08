@@ -77,8 +77,8 @@ mkCommand cmd = do
   pscidSpecific ← hasNamedScript ("pscid:" <> cmd)
   namedScript   ← hasNamedScript cmd
 
-  let specificCommand = guard pscidSpecific $> "npm run build -s pscid:"
-      buildCommand    = guard namedScript   $> "npm run build -s "
+  let specificCommand = guard pscidSpecific $> "npm run -s pscid:"
+      buildCommand    = guard namedScript   $> "npm run -s "
       pulpCommand     = pulpCmd <> " "
 
   pure $ fromMaybe pulpCommand (specificCommand <|> buildCommand) <> cmd
