@@ -99,7 +99,10 @@ main = launchAffVoid do
         onKeypress (\k → runPscid (keyHandler stateRef k) config')
         log ("Watching " <> directory <> " on port " <> show port')
         startScreen
-    _ → liftEff (log "Failed to start psc-ide-server")
+    Right (Left errMsg) →
+      liftEff (log ("Failed to start psc-ide-server with: " <> errMsg))
+    Left err →
+      liftEff (log ("Failed to start psc-ide-server with : " <> show err))
 
 -- | Given a directory, appends the globs necessary to match all PureScript and
 -- | JavaScript source files inside that directory
