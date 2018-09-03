@@ -76,19 +76,17 @@ mkDefaultOptions =
 type IncludePath = String
 
 data CLICommand
-  = NamedScriptSpecificCommand String
-  | NamedScriptCommand String
+  = ScriptCommand String
   | PulpCommand String (Array IncludePath)
 
-instance showCLICommand :: Show CLICommand where
-  show = case _ of
-    NamedScriptSpecificCommand str -> str
-    NamedScriptCommand str -> str
-    PulpCommand str includesArr ->
-      if Array.null includesArr then
-        str
-      else
-        str <> " -I " <> (joinWith ":" includesArr)
+printCLICommand :: CLICommand -> String
+printCLICommand = case _ of
+  ScriptCommand str -> str
+  PulpCommand str includesArr ->
+    if Array.null includesArr then
+      str
+    else
+      str <> " -I " <> (joinWith ":" includesArr)
 
 -- | If the command is a PulpCommand (eg. "pulp build"), then the array of
 -- | include paths is set. If the command is an NPM script, the command is
@@ -98,7 +96,7 @@ instance showCLICommand :: Show CLICommand where
 setCommandIncludes :: Array IncludePath -> CLICommand -> CLICommand
 setCommandIncludes includesArr cmd = case cmd of
   PulpCommand str _ -> PulpCommand str includesArr
-  _ -> cmd
+  ScriptCommand str -> ScriptCommand str
 
 mkCommand ∷ ∀ e. String → Eff (fs ∷ FS | e) CLICommand
 mkCommand cmd = do
@@ -106,12 +104,10 @@ mkCommand cmd = do
   namedScript   ← hasNamedScript cmd
 
   let specificCommand =
-        guard pscidSpecific
-          $> NamedScriptSpecificCommand ("npm run -s pscid:" <> cmd)
+        guard pscidSpecific $> ScriptCommand ("npm run -s pscid:" <> cmd)
 
       buildCommand =
-        guard namedScript
-          $> NamedScriptCommand ("npm run -s " <> cmd)
+        guard namedScript $> ScriptCommand ("npm run -s " <> cmd)
 
       pulpCommand =
         PulpCommand (pulpCmd <> " " <> cmd) []
@@ -166,9 +162,9 @@ buildOptions port testAfterRebuild includes outputDirectory censor = do
              , testAfterRebuild
              , sourceDirectories
              , censorCodes
-             , buildCommand: buildCommand
+             , buildCommand
              , outputDirectory
-             , testCommand: testCommand
+             , testCommand
              })
 
 foreign import hasNamedScript ∷ ∀ e. String → Eff (fs ∷ FS | e) Boolean
