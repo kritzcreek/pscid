@@ -32,7 +32,7 @@ import PscIde.Command (Command(..), Message(..))
 import Pscid.Console (owl, clearConsole, suggestionHint, startScreen)
 import Pscid.Error (catchLog, noSourceDirectoryError)
 import Pscid.Keypress (Key(..), onKeypress, initializeKeypresses)
-import Pscid.Options (PscidSettings, optionParser)
+import Pscid.Options (CLICommand, PscidSettings, optionParser, printCLICommand)
 import Pscid.Process (execCommand)
 import Pscid.Psa (filterWarnings, PsaError, parseErrors, psaPrinter)
 import Pscid.Server (restartServer, startServer', stopServer')
@@ -116,9 +116,9 @@ keyHandler stateRef k = do
   {port, buildCommand, outputDirectory, testCommand} ← ask
   case k of
     Key {ctrl: false, name: "b", meta: false, shift: false} →
-      liftEff (execCommand "Build" buildCommand)
+      liftEff (execCommand "Build" $ printCLICommand buildCommand)
     Key {ctrl: false, name: "t", meta: false, shift: false} →
-      liftEff (execCommand "Test" testCommand)
+      liftEff (execCommand "Test" $ printCLICommand testCommand)
     Key {ctrl: false, name: "r", meta: false, shift: false} → liftEff do
       clearConsole
       catchLog "Failed to restart server" $ launchAffVoid do
@@ -157,7 +157,7 @@ triggerRebuild stateRef file = do
           Nothing → pure unit
           Just s → suggestionHint
         when (testAfterRebuild && isRight errs)
-          (execCommand "Test" testCommand)
+          (execCommand "Test" $ printCLICommand testCommand)
 
 changeExtension ∷ String → String → String
 changeExtension s ex =
@@ -196,9 +196,9 @@ foreign import gaze
       Unit
 
 ask ∷ Pscid { port ∷ Int
-             , buildCommand ∷ String
+             , buildCommand ∷ CLICommand
              , outputDirectory ∷ String
-             , testCommand ∷ String
+             , testCommand ∷ CLICommand
              , testAfterRebuild ∷ Boolean
              , sourceDirectories ∷ Array String
              , censorCodes ∷ Array String

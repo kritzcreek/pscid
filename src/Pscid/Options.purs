@@ -1,18 +1,19 @@
 module Pscid.Options where
 
 import Prelude
+
 import Control.Alternative ((<|>))
-import Control.Monad.Eff.Console as Console
-import Data.Array as Array
 import Control.Monad.Eff (Eff)
+import Control.Monad.Eff.Console as Console
 import Control.Monad.Eff.Exception (catchException)
 import Control.MonadZero (guard)
 import Data.Array (filter, filterA)
+import Data.Array as Array
 import Data.Either (Either(..))
 import Data.Int (fromNumber)
 import Data.Maybe (Maybe(..), fromMaybe)
 import Data.Newtype (class Newtype, unwrap, wrap)
-import Data.String (Pattern(..), split, null)
+import Data.String (Pattern(..), joinWith, null, split)
 import Global (readInt)
 import Node.FS (FS)
 import Node.Platform (Platform(..))
@@ -23,9 +24,9 @@ import Pscid.Util ((∘))
 
 newtype PscidSettings a = PscidSettings
   { port              ∷ a
-  , buildCommand      ∷ String
+  , buildCommand      ∷ CLICommand
   , outputDirectory   ∷ String
-  , testCommand       ∷ String
+  , testCommand       ∷ CLICommand
   , testAfterRebuild  ∷ Boolean
   , sourceDirectories ∷ Array String
   , censorCodes       ∷ Array String
@@ -38,9 +39,9 @@ type PscidOptions = PscidSettings (Maybe Int)
 defaultOptions ∷ PscidOptions
 defaultOptions = PscidSettings
   { port: Nothing
-  , buildCommand: pulpCmd <> " build"
+  , buildCommand: PulpCommand (pulpCmd <> " build") []
   , outputDirectory: "output"
-  , testCommand: pulpCmd <> " test"
+  , testCommand: PulpCommand (pulpCmd <> " test") []
   , testAfterRebuild: false
   , sourceDirectories: []
   , censorCodes: []
@@ -72,16 +73,46 @@ mkDefaultOptions =
       <*> mkCommand "test"
       <*> scanDefaultDirectories
 
-mkCommand ∷ ∀ e. String → Eff (fs ∷ FS | e) String
+type IncludePath = String
+
+data CLICommand
+  = ScriptCommand String
+  | PulpCommand String (Array IncludePath)
+
+printCLICommand :: CLICommand -> String
+printCLICommand = case _ of
+  ScriptCommand str -> str
+  PulpCommand str includesArr ->
+    if Array.null includesArr then
+      str
+    else
+      str <> " -I " <> (joinWith ":" includesArr)
+
+-- | If the command is a PulpCommand (eg. "pulp build"), then the array of
+-- | include paths is set. If the command is an NPM script, the command is
+-- | left unchanged. This is because it's impossible to guarantee that the NPM
+-- | script directly executes "pulp build" (it may execute another script), and
+-- | therefore we cannot simply append the includes onto the end of the command.
+setCommandIncludes :: Array IncludePath -> CLICommand -> CLICommand
+setCommandIncludes includesArr cmd = case cmd of
+  PulpCommand str _ -> PulpCommand str includesArr
+  ScriptCommand str -> ScriptCommand str
+
+mkCommand ∷ ∀ e. String → Eff (fs ∷ FS | e) CLICommand
 mkCommand cmd = do
   pscidSpecific ← hasNamedScript ("pscid:" <> cmd)
   namedScript   ← hasNamedScript cmd
 
-  let specificCommand = guard pscidSpecific $> "npm run -s pscid:"
-      buildCommand    = guard namedScript   $> "npm run -s "
-      pulpCommand     = pulpCmd <> " "
+  let specificCommand =
+        guard pscidSpecific $> ScriptCommand ("npm run -s pscid:" <> cmd)
 
-  pure $ fromMaybe pulpCommand (specificCommand <|> buildCommand) <> cmd
+      buildCommand =
+        guard namedScript $> ScriptCommand ("npm run -s " <> cmd)
+
+      pulpCommand =
+        PulpCommand (pulpCmd <> " " <> cmd) []
+
+  pure $ fromMaybe pulpCommand (specificCommand <|> buildCommand)
 
 optionParser ∷ ∀ e. Eff (console ∷ Console.CONSOLE, fs ∷ FS | e) PscidOptions
 optionParser =
@@ -121,18 +152,19 @@ buildOptions
   → Eff (fs ∷ FS | e) PscidOptions
 buildOptions port testAfterRebuild includes outputDirectory censor = do
   defaults ← unwrap <$> mkDefaultOptions
-  let sourceDirectories =
-        if null includes
-        then defaults.sourceDirectories
-        else filter (not null) (split (Pattern ";") includes)
+  let includesArr = filter (not null) (split (Pattern ";") includes)
+      sourceDirectories = defaults.sourceDirectories <> includesArr
       censorCodes = filter (not null) (split (Pattern ",") censor)
+      buildCommand = setCommandIncludes includesArr defaults.buildCommand
+      testCommand = setCommandIncludes includesArr defaults.testCommand
+
   pure (wrap { port: fromNumber (readInt 10 port)
              , testAfterRebuild
              , sourceDirectories
              , censorCodes
-             , buildCommand: defaults.buildCommand
+             , buildCommand
              , outputDirectory
-             , testCommand: defaults.testCommand
+             , testCommand
              })
 
 foreign import hasNamedScript ∷ ∀ e. String → Eff (fs ∷ FS | e) Boolean
