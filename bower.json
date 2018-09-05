@@ -18,7 +18,7 @@
     "purescript-yargs": "^4.0.0",
     "purescript-node-streams": "^4.0.0",
     "purescript-node-process": "^6.0.0",
-    "purescript-suggest": "https://github.com/kRITZCREEK/purescript-suggest.git#master",
+    "purescript-suggest": "^4.0.0",
     "purescript-arrays": "^5.0.0"
   },
   "devDependencies": {
