@@ -2,68 +2,47 @@ module Main where
 
 import Prelude
 
-import Control.Monad.Aff (attempt, delay, runAff)
-import Control.Monad.Aff.AVar (AVAR)
-import Control.Monad.Eff (Eff)
-import Control.Monad.Eff.Class (class MonadEff, liftEff)
-import Control.Monad.Eff.Console (log, CONSOLE)
-import Control.Monad.Eff.Exception (EXCEPTION)
-import Control.Monad.Eff.Random (RANDOM)
-import Control.Monad.Eff.Ref (writeRef, readRef, Ref, newRef, REF)
-import Control.Monad.Eff.Uncurried (runEffFn2, EffFn2)
-import Control.Monad.Eff.Unsafe (unsafeCoerceEff)
-import Control.Monad.Reader (class MonadAsk)
-import Control.Monad.Reader.Class as Reader
-import Control.Monad.Reader.Trans (ReaderT, runReaderT)
-import Control.Monad.ST (runST)
+import Control.Monad.Reader (class MonadAsk, ReaderT, runReaderT)
+import Control.Monad.Reader as Reader
 import Data.Argonaut (Json)
-import Data.Array (concatMap, head, null)
-import Data.Either (isRight, Either(..), either)
-import Data.Maybe (Maybe(Just, Nothing))
-import Data.Newtype (unwrap, wrap)
+import Data.Array as Array
+import Data.Either (Either(..), either, isRight)
+import Data.Maybe (Maybe(..))
+import Data.Newtype (un)
 import Data.String (Pattern(..))
 import Data.String as String
-import Data.Time.Duration (Milliseconds(..))
-import Node.ChildProcess (CHILD_PROCESS)
-import Node.FS (FS)
+import Effect (Effect)
+import Effect.Aff (Milliseconds(..), attempt, delay, launchAff_, runAff)
+import Effect.Class (class MonadEffect, liftEffect)
+import Effect.Class.Console as Console
+import Effect.Ref (Ref)
+import Effect.Ref as Ref
+import Effect.Uncurried (EffectFn2, runEffectFn2)
 import Node.Process as Process
-import PscIde (sendCommandR, load, cwd, NET)
+import Psa (PsaError)
+import PscIde (cwd, load, sendCommandR)
 import PscIde.Command (Command(..), Message(..))
-import Pscid.Console (owl, clearConsole, suggestionHint, startScreen)
+import Pscid.Console (clearConsole, owl, startScreen, suggestionHint)
 import Pscid.Error (catchLog, noSourceDirectoryError)
-import Pscid.Keypress (Key(..), onKeypress, initializeKeypresses)
-import Pscid.Options (CLICommand, PscidSettings, optionParser, printCLICommand)
+import Pscid.Keypress (Key(..), initializeKeypresses, onKeypress)
+import Pscid.Options (CLICommand, PscidSettings(..), optionParser, printCLICommand)
 import Pscid.Process (execCommand)
-import Pscid.Psa (filterWarnings, PsaError, parseErrors, psaPrinter)
+import Pscid.Psa (filterWarnings, parseErrors, psaPrinter)
 import Pscid.Server (restartServer, startServer', stopServer')
-import Pscid.Util (launchAffVoid, both, (∘))
+import Pscid.Util (both, (∘))
 import Suggest (applySuggestions)
 
-type PscidEffects = PscidEffects' ()
-
-type PscidEffects' e =
-  ( cp ∷ CHILD_PROCESS
-  , console ∷ CONSOLE
-  , net ∷ NET
-  , avar ∷ AVAR
-  , fs ∷ FS
-  , process ∷ Process.PROCESS
-  , random ∷ RANDOM
-  , ref ∷ REF
-  | e
-  )
-
-newtype Pscid a = Pscid (ReaderT (PscidSettings Int) (Eff PscidEffects) a)
+newtype Pscid a = Pscid (ReaderT (PscidSettings Int) Effect a)
 derive newtype instance functorPscid ∷ Functor Pscid
 derive newtype instance applyPscid ∷ Apply Pscid
 derive newtype instance applicativePscid ∷ Applicative Pscid
 derive newtype instance bindPscid ∷ Bind Pscid
 derive newtype instance monadPscid ∷ Monad Pscid
 derive newtype instance monadAskPscid ∷ MonadAsk (PscidSettings Int) Pscid
-instance monadEffPscid ∷ MonadEff e Pscid where
-  liftEff f = Pscid (liftEff (unsafeCoerceEff f))
+instance monadEffectPscid ∷ MonadEffect Pscid where
+  liftEffect = Pscid ∘ liftEffect
 
-runPscid ∷ ∀ a. Pscid a → PscidSettings Int → Eff PscidEffects a
+runPscid ∷ ∀ a. Pscid a → PscidSettings Int → Effect a
 runPscid (Pscid f) e = runReaderT f e
 
 newtype State = State { errors ∷ Array PsaError }
@@ -71,38 +50,38 @@ newtype State = State { errors ∷ Array PsaError }
 emptyState ∷ State
 emptyState = State { errors: [] }
 
-main ∷ Eff (PscidEffects' (exception ∷ EXCEPTION)) Unit
-main = launchAffVoid do
-  config@{ port, outputDirectory, sourceDirectories } ← unwrap <$> liftEff optionParser
-  when (null sourceDirectories) (liftEff noSourceDirectoryError)
-  stateRef ← liftEff (newRef emptyState)
-  liftEff (log "Starting purs ide server")
+main ∷ Effect Unit
+main = launchAff_ do
+  config@{ port, outputDirectory, sourceDirectories } ← un PscidSettings <$> liftEffect optionParser
+  when (Array.null sourceDirectories) (liftEffect noSourceDirectoryError)
+  stateRef ← liftEffect (Ref.new emptyState)
+  Console.log "Starting purs ide server"
   r ← attempt (startServer' port outputDirectory)
   case r of
     Right (Right port') → do
-      let config' = wrap (config { port = port' })
+      let config' = PscidSettings (config { port = port' })
       Message directory ← do
         delay (Milliseconds 500.0)
         _ ← load port' [] []
         res ← cwd port'
         case res of
           Right d → pure d
-          Left err → liftEff do
-            log err
+          Left err → liftEffect do
+            Console.log err
             Process.exit 1
-      liftEff do
-        runEffFn2 gaze
-          (concatMap fileGlob sourceDirectories)
+      liftEffect do
+        runEffectFn2 gaze
+          (Array.concatMap fileGlob sourceDirectories)
           (\d → runPscid (triggerRebuild stateRef d) config')
         clearConsole
         initializeKeypresses
         onKeypress (\k → runPscid (keyHandler stateRef k) config')
-        log ("Watching " <> directory <> " on port " <> show port')
+        Console.log ("Watching " <> directory <> " on port " <> show port')
         startScreen
     Right (Left errMsg) →
-      liftEff (log ("Failed to start psc-ide-server with: " <> errMsg))
+      Console.log ("Failed to start psc-ide-server with: " <> errMsg)
     Left err →
-      liftEff (log ("Failed to start psc-ide-server with : " <> show err))
+      Console.log ("Failed to start psc-ide-server with : " <> show err)
 
 -- | Given a directory, appends the globs necessary to match all PureScript and
 -- | JavaScript source files inside that directory
@@ -116,44 +95,44 @@ keyHandler stateRef k = do
   {port, buildCommand, outputDirectory, testCommand} ← ask
   case k of
     Key {ctrl: false, name: "b", meta: false, shift: false} →
-      liftEff (execCommand "Build" $ printCLICommand buildCommand)
+      liftEffect (execCommand "Build" $ printCLICommand buildCommand)
     Key {ctrl: false, name: "t", meta: false, shift: false} →
-      liftEff (execCommand "Test" $ printCLICommand testCommand)
-    Key {ctrl: false, name: "r", meta: false, shift: false} → liftEff do
+      liftEffect (execCommand "Test" $ printCLICommand testCommand)
+    Key {ctrl: false, name: "r", meta: false, shift: false} → liftEffect do
       clearConsole
-      catchLog "Failed to restart server" $ launchAffVoid do
+      catchLog "Failed to restart server" $ launchAff_ do
         restartServer port outputDirectory
         load port [] []
-      log owl
-    Key {ctrl: false, name: "s", meta: false, shift: false} → liftEff do
-      State state ← readRef stateRef
-      case head state.errors of
+      Console.log owl
+    Key {ctrl: false, name: "s", meta: false, shift: false} → liftEffect do
+      State state ← Ref.read stateRef
+      case Array.head state.errors of
         Nothing →
-          log "No suggestions available"
+          Console.log "No suggestions available"
         Just e →
-          catchLog "Couldn't apply suggestion." (runST (applySuggestions [e]))
+          catchLog "Couldn't apply suggestion." (applySuggestions [e])
     Key {ctrl: false, name: "q", meta: false, shift: false} →
-      liftEff (log "Bye!" <* runAff exit exit (stopServer' port))
+      liftEffect (Console.log "Bye!" <* runAff (either exit exit) (stopServer' port))
     Key {ctrl: true, name: "c", meta: false, shift: false} →
-      liftEff (log "Press q to exit")
+      Console.log "Press q to exit"
     Key {ctrl, name, meta, shift} →
-      liftEff (log name)
+      Console.log name
   where
-    exit ∷ ∀ a eff. a → Eff (process ∷ Process.PROCESS | eff) Unit
+    exit ∷ ∀ a. a → Effect Unit
     exit = const (Process.exit 0)
 
 triggerRebuild ∷ Ref State → String → Pscid Unit
 triggerRebuild stateRef file = do
   {port, testCommand, testAfterRebuild, censorCodes} ← ask
   let fileName = changeExtension file "purs"
-  liftEff ∘ catchLog "We couldn't talk to the server" $ launchAffVoid do
+  liftEffect ∘ catchLog "We couldn't talk to the server" $ launchAff_ do
     result ← sendCommandR port (RebuildCmd fileName Nothing)
     case result of
-      Left _ → liftEff (log "We couldn't talk to the server")
-      Right errs → liftEff do
+      Left _ → Console.log "We couldn't talk to the server"
+      Right errs → liftEffect do
         parsedErrors ← handleRebuildResult fileName censorCodes errs
-        writeRef stateRef (State {errors: parsedErrors})
-        case head parsedErrors >>= _.suggestion of
+        Ref.write (State {errors: parsedErrors}) stateRef
+        case Array.head parsedErrors >>= _.suggestion of
           Nothing → pure unit
           Just s → suggestionHint
         when (testAfterRebuild && isRight errs)
@@ -168,32 +147,26 @@ changeExtension s ex =
       String.take ix s <> "." <> ex
 
 handleRebuildResult
-  ∷ ∀ e
-  . String
+  ∷ String
   → Array String
   → Either Json Json
-  → Eff (console ∷ CONSOLE, fs ∷ FS | e) (Array PsaError)
+  → Effect (Array PsaError)
 handleRebuildResult file censorCodes result = do
   clearConsole
-  log ("Checking " <> file)
+  Console.log ("Checking " <> file)
   case both parseErrors result of
     Right warnings →
       either
-        (\_ → log "Failed to parse warnings" $> [])
+        (\_ → Console.log "Failed to parse warnings" $> [])
         (\e → psaPrinter owl false e $> e)
         (filterWarnings censorCodes <$> warnings)
     Left errors →
       either
-        (\_ → log "Failed to parse errors" $> [])
+        (\_ → Console.log "Failed to parse errors" $> [])
         (\e → psaPrinter owl true e $> e)
         errors
 
-foreign import gaze
-  ∷ ∀ eff
-  . EffFn2 (fs ∷ FS | eff)
-      (Array String)
-      (String → Eff (fs ∷ FS | eff) Unit)
-      Unit
+foreign import gaze ∷ EffectFn2 (Array String) (String → Effect Unit) Unit
 
 ask ∷ Pscid { port ∷ Int
              , buildCommand ∷ CLICommand
@@ -203,4 +176,4 @@ ask ∷ Pscid { port ∷ Int
              , sourceDirectories ∷ Array String
              , censorCodes ∷ Array String
              }
-ask = unwrap <$> Reader.ask
+ask = un PscidSettings <$> Reader.ask

@@ -6,48 +6,32 @@ module Pscid.Server
        ) where
 
 import Prelude
+
+import Control.Alt ((<|>))
+import Data.Either (Either(..))
+import Data.Maybe (Maybe(..), maybe)
+import Effect.Aff (Aff, attempt)
+import Effect.Class (liftEffect)
+import Effect.Console as Console
+import Effect.Exception (try)
 import Node.Process as Process
 import PscIde as PscIde
-import Control.Alt ((<|>))
-import Control.Monad.Aff (attempt, Aff)
-import Control.Monad.Aff.AVar (AVAR)
-import Control.Monad.Eff.Class (liftEff)
-import Control.Monad.Eff.Console (CONSOLE, log)
-import Control.Monad.Eff.Exception (try)
-import Control.Monad.Eff.Random (RANDOM)
-import Data.Either (Either(Right, Left))
-import Data.Maybe (Maybe(..), maybe)
-import Node.ChildProcess (CHILD_PROCESS)
-import Node.FS (FS)
-import Node.Process (PROCESS)
-import PscIde (NET)
 import PscIde.Command (Message(..))
 import PscIde.Server (defaultServerArgs, startServer, stopServer, ServerStartResult(..), getSavedPort, pickFreshPort, savePort, deleteSavedPort)
 import Pscid.Util ((∘))
 
-stopServer'
-  ∷ ∀ e
-  . Int
-  → Aff ( cp ∷ CHILD_PROCESS, process ∷ PROCESS
-        , net ∷ NET, fs ∷ FS | e) Unit
+stopServer' ∷ Int → Aff Unit
 stopServer' port = do
-  _ ← liftEff (Process.cwd >>= try ∘ deleteSavedPort)
+  _ ← liftEffect (Process.cwd >>= try ∘ deleteSavedPort)
   stopServer port
 
-type StartServerEff e =
-  ( cp ∷ CHILD_PROCESS, process ∷ Process.PROCESS
-  , console ∷ CONSOLE, avar ∷ AVAR
-  , net ∷ NET, random ∷ RANDOM
-  , fs ∷ FS | e)
-
 startServer'
-  ∷ ∀ e
-  . Maybe Int
+  ∷ Maybe Int
   → String
-  → Aff (StartServerEff e) (Either String Int)
+  → Aff (Either String Int)
 startServer' optPort outputDir = do
-  dir ← liftEff Process.cwd
-  port ← liftEff (getSavedPort dir)
+  dir ← liftEffect Process.cwd
+  port ← liftEffect (getSavedPort dir)
   case optPort <|> port of
     Just p → do
       workingDir ← attempt (PscIde.cwd p)
@@ -60,10 +44,10 @@ startServer' optPort outputDir = do
     Nothing → launchServer dir
 
   where
-  launchServer ∷ String → Aff (StartServerEff e) (Either String Int)
+  launchServer ∷ String → Aff (Either String Int)
   launchServer dir = do
-    newPort ← maybe (liftEff pickFreshPort) pure optPort
-    _ ← liftEff (try (savePort newPort dir))
+    newPort ← maybe (liftEffect pickFreshPort) pure optPort
+    _ ← liftEffect (try (savePort newPort dir))
     r newPort <$>
       startServer
         ( defaultServerArgs
@@ -77,17 +61,13 @@ startServer' optPort outputDir = do
       r _       (Closed)       = Left "Closed"
       r _       (StartError s) = Left s
 
-restartServer
-  ∷ ∀ e
-  . Int
-  → String
-  → Aff (StartServerEff e) Unit
+restartServer ∷ Int → String → Aff Unit
 restartServer port outputDir = do
   _ ← attempt (stopServer port)
   r ← attempt (startServer' (Just port) outputDir)
-  liftEff case r of
+  liftEffect case r of
     Left e → do
-      log ("Failed to restart psc-ide-server on port: " <> show port
+      Console.log ("Failed to restart psc-ide-server on port: " <> show port
            <> "\nThe error was: " <> show e)
       Process.exit 1
-    Right _ → log "I restarted psc-ide-server for you."
+    Right _ → Console.log "I restarted psc-ide-server for you."

@@ -2,24 +2,23 @@ module Pscid.Options where
 
 import Prelude
 
-import Control.Alternative ((<|>))
-import Control.Monad.Eff (Eff)
-import Control.Monad.Eff.Console as Console
-import Control.Monad.Eff.Exception (catchException)
-import Control.MonadZero (guard)
-import Data.Array (filter, filterA)
+import Control.Alt ((<|>))
+import Control.MonadPlus (guard)
 import Data.Array as Array
 import Data.Either (Either(..))
-import Data.Int (fromNumber)
+import Data.Int as Int
 import Data.Maybe (Maybe(..), fromMaybe)
-import Data.Newtype (class Newtype, unwrap, wrap)
-import Data.String (Pattern(..), joinWith, null, split)
+import Data.Newtype (class Newtype, un)
+import Data.Newtype as Newtype
+import Data.String as String
+import Effect (Effect)
+import Effect.Console as Console
+import Effect.Exception (catchException)
 import Global (readInt)
-import Node.FS (FS)
 import Node.Platform (Platform(..))
 import Node.Process (platform)
-import Node.Yargs.Applicative (flag, yarg, runY)
-import Node.Yargs.Setup (example, usage, defaultHelp, defaultVersion)
+import Node.Yargs.Applicative (flag, runY, yarg)
+import Node.Yargs.Setup (defaultHelp, defaultVersion, example, usage)
 import Pscid.Util ((∘))
 
 newtype PscidSettings a = PscidSettings
@@ -49,13 +48,13 @@ defaultOptions = PscidSettings
 
 -- | Scans the default directories and returns those, that did contain
 -- | PureScript files.
-scanDefaultDirectories ∷ ∀ e. Eff (fs ∷ FS | e) (Array String)
+scanDefaultDirectories ∷ Effect (Array String)
 scanDefaultDirectories =
   let
     defaultDirectories = ["src", "app", "test", "tests"]
     mkGlob dir = dir <> "/**/*.purs"
   in
-   filterA (map (not ∘ Array.null) ∘ glob ∘ mkGlob) defaultDirectories
+   Array.filterA (map (not ∘ Array.null) ∘ glob ∘ mkGlob) defaultDirectories
 
 pulpCmd ∷ String
 pulpCmd = if platform == Just Win32 then "pulp.cmd" else "pulp"
@@ -63,9 +62,9 @@ pulpCmd = if platform == Just Win32 then "pulp.cmd" else "pulp"
 npmCmd ∷ String
 npmCmd = if platform == Just Win32 then "npm.cmd" else "npm"
 
-mkDefaultOptions ∷ ∀ e. Eff (fs ∷ FS | e) PscidOptions
+mkDefaultOptions ∷ Effect PscidOptions
 mkDefaultOptions =
-  wrap <$> collectData (unwrap defaultOptions)
+  Newtype.traverse PscidSettings collectData defaultOptions
   where
     collectData x =
       x {buildCommand = _, testCommand = _, sourceDirectories = _}
@@ -86,7 +85,7 @@ printCLICommand = case _ of
     if Array.null includesArr then
       str
     else
-      str <> " -I " <> (joinWith ":" includesArr)
+      str <> " -I " <> (String.joinWith ":" includesArr)
 
 -- | If the command is a PulpCommand (eg. "pulp build"), then the array of
 -- | include paths is set. If the command is an NPM script, the command is
@@ -98,7 +97,7 @@ setCommandIncludes includesArr cmd = case cmd of
   PulpCommand str _ -> PulpCommand str includesArr
   ScriptCommand str -> ScriptCommand str
 
-mkCommand ∷ ∀ e. String → Eff (fs ∷ FS | e) CLICommand
+mkCommand ∷ String → Effect CLICommand
 mkCommand cmd = do
   pscidSpecific ← hasNamedScript ("pscid:" <> cmd)
   namedScript   ← hasNamedScript cmd
@@ -114,7 +113,7 @@ mkCommand cmd = do
 
   pure $ fromMaybe pulpCommand (specificCommand <|> buildCommand)
 
-optionParser ∷ ∀ e. Eff (console ∷ Console.CONSOLE, fs ∷ FS | e) PscidOptions
+optionParser ∷ Effect PscidOptions
 optionParser =
   let
     setup = usage "$0 -p 4245"
@@ -143,29 +142,29 @@ optionParser =
          false
 
 buildOptions
-  ∷ ∀ e
-  . String
+  ∷ String
   → Boolean
   → String
   → String
   → String
-  → Eff (fs ∷ FS | e) PscidOptions
+  → Effect PscidOptions
 buildOptions port testAfterRebuild includes outputDirectory censor = do
-  defaults ← unwrap <$> mkDefaultOptions
-  let includesArr = filter (not null) (split (Pattern ";") includes)
+  defaults ← un PscidSettings <$> mkDefaultOptions
+  let includesArr = Array.filter (not String.null) (String.split (String.Pattern ";") includes)
       sourceDirectories = defaults.sourceDirectories <> includesArr
-      censorCodes = filter (not null) (split (Pattern ",") censor)
+      censorCodes = Array.filter (not String.null) (String.split (String.Pattern ",") censor)
       buildCommand = setCommandIncludes includesArr defaults.buildCommand
       testCommand = setCommandIncludes includesArr defaults.testCommand
 
-  pure (wrap { port: fromNumber (readInt 10 port)
-             , testAfterRebuild
-             , sourceDirectories
-             , censorCodes
-             , buildCommand
-             , outputDirectory
-             , testCommand
-             })
+  pure (PscidSettings
+    { port: Int.fromNumber (readInt 10 port)
+    , testAfterRebuild
+    , sourceDirectories
+    , censorCodes
+    , buildCommand
+    , outputDirectory
+    , testCommand
+    })
 
-foreign import hasNamedScript ∷ ∀ e. String → Eff (fs ∷ FS | e) Boolean
-foreign import glob ∷ ∀ e. String → Eff (fs ∷ FS | e) (Array String)
+foreign import hasNamedScript ∷ String → Effect Boolean
+foreign import glob ∷ String → Effect (Array String)
