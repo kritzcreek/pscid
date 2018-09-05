@@ -1,34 +1,29 @@
 module Pscid.Psa
-       ( module Psa
-       , parseErrors
-       , psaPrinter
-       , filterWarnings
-       ) where
+  ( module Psa
+  , parseErrors
+  , psaPrinter
+  , filterWarnings
+  ) where
 
 import Prelude
 
-import Control.Monad.Eff (Eff)
-import Control.Monad.Eff.Console as Console
-import Control.Monad.Eff.Exception (catchException, EXCEPTION)
-import Data.Argonaut (Json)
-import Data.Argonaut.Decode (decodeJson)
-import Data.Array (filter, head, null)
+import Data.Argonaut (Json, decodeJson)
 import Data.Array as Array
-import Data.Either (Either)
-import Data.Foldable (notElem)
-import Data.Maybe (fromMaybe, Maybe(..))
+import Data.Either (Either, hush)
+import Data.Maybe (Maybe(..), fromMaybe)
 import Data.Set as Set
-import Data.String (Pattern(Pattern), joinWith)
-import Data.String as Str
+import Data.String as String
 import Data.Traversable (traverse)
+import Effect (Effect)
+import Effect.Console as Console
+import Effect.Exception (catchException)
 import Node.Encoding as Encoding
-import Node.FS (FS)
 import Node.FS.Sync as File
 import Psa (Output, PsaError, PsaOptions, PsaResult, StatVerbosity(..), output, parsePsaError)
 import Psa.Printer (renderAnsi, renderRow)
 import Psa.Printer.Default (renderError, renderWarning)
 import Psa.Util (iter_)
-import Pscid.Util (shush, (∘))
+import Pscid.Util ((∘))
 
 defaultOptions ∷ PsaOptions
 defaultOptions =
@@ -44,7 +39,7 @@ defaultOptions =
   , statVerbosity: NoStats
   }
 
-print ∷ ∀ eff. String → PsaOptions → Output → Eff (console ∷ Console.CONSOLE | eff) Unit
+print ∷ String → PsaOptions → Output → Effect Unit
 print successMessage options {warnings, errors} = do
   iter_ warnings \i warning → do
     Console.error (toString (renderWarning 1 1 warning))
@@ -54,16 +49,16 @@ print successMessage options {warnings, errors} = do
     Console.error (toString (renderError 1 1 error))
     Console.error ""
 
-  when (null warnings && null errors)
+  when (Array.null warnings && Array.null errors)
     (Console.error successMessage)
   where
-    toString = renderRow (joinWith "" ∘ map (renderAnsi options.ansi))
+    toString = renderRow (String.joinWith "" ∘ map (renderAnsi options.ansi))
 
 parseErrors ∷ Json → Either String (Array PsaError)
 parseErrors j = traverse parsePsaError =<< decodeJson j
 
 parseFirstError ∷ Json → Maybe PsaError
-parseFirstError j = head =<< (shush (parseErrors j))
+parseFirstError j = Array.head =<< hush (parseErrors j)
 
 emptyResult ∷ PsaResult
 emptyResult = {warnings: [], errors: []}
@@ -73,29 +68,24 @@ wrapError b e = if b
                 then { warnings: [ ], errors: [e] }
                 else { warnings: [e], errors: [ ] }
 
-psaPrinter
-  ∷ ∀ eff
-  . String
-  → Boolean
-  → Array PsaError
-  → Eff ( console ∷ Console.CONSOLE, fs ∷ FS | eff) Unit
+psaPrinter ∷ String → Boolean → Array PsaError → Effect Unit
 psaPrinter successMessage isError errs =
   catchException (const (Console.error "An error inside psaPrinter")) do
     out' ← output loadLines defaultOptions result
     print successMessage defaultOptions out'
     where
-      result = fromMaybe emptyResult (wrapError isError <$> head errs)
+      result = fromMaybe emptyResult (wrapError isError <$> Array.head errs)
 
 loadLines
-  ∷ ∀ a e
+  ∷ ∀ a
   . String
   → { startLine ∷ Int , endLine ∷ Int | a}
-  → Eff ( fs ∷ FS, exception ∷ EXCEPTION | e) (Maybe (Array String))
+  → Effect (Maybe (Array String))
 loadLines filename pos = do
-  contents ← Str.split (Pattern "\n") <$> File.readTextFile Encoding.UTF8 filename
+  contents ← String.split (String.Pattern "\n") <$> File.readTextFile Encoding.UTF8 filename
   let source = Array.slice (pos.startLine - 1) (pos.endLine) contents
   pure (Just source)
 
 filterWarnings ∷ Array String → Array PsaError → Array PsaError
 filterWarnings ignored errors =
-  filter (\e → e.errorCode `notElem` ignored) errors
+  Array.filter (\e → e.errorCode `Array.notElem` ignored) errors

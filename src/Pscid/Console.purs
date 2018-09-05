@@ -1,13 +1,15 @@
 module Pscid.Console where
 
 import Prelude
-import Ansi.Codes (Color(Blue))
-import Ansi.Output (foreground, withGraphics)
-import Control.Monad.Eff (Eff)
-import Control.Monad.Eff.Console (CONSOLE, log)
 
-logColored ∷ ∀ e. Color → String → Eff (console ∷ CONSOLE | e) Unit
-logColored c = withGraphics log (foreground c)
+import Ansi.Codes (Color(..))
+import Ansi.Output (foreground, withGraphics)
+import Effect (Effect)
+import Effect.Console as Console
+import Pscid.Util ((∘))
+
+logColored ∷ Color → String → Effect Unit
+logColored c = Console.log ∘ withGraphics (foreground c)
 
 owl ∷ String
 owl =
@@ -27,13 +29,13 @@ Press r to reset
 Press q to quit
   """
 
-startScreen ∷ ∀ e. Eff (console ∷ CONSOLE | e) Unit
+startScreen ∷ Effect Unit
 startScreen = do
-  log owl
+  Console.log owl
   logColored Blue helpText
 
-suggestionHint ∷ ∀ e. Eff (console ∷ CONSOLE | e) Unit
+suggestionHint ∷ Effect Unit
 suggestionHint =
   logColored Blue "Press s to automatically apply the suggestion."
 
-foreign import clearConsole ∷ ∀ e. Eff (console ∷ CONSOLE | e) Unit
+foreign import clearConsole ∷ Effect Unit

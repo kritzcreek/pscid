@@ -1,27 +1,21 @@
 module Pscid.Error where
 
 import Prelude
-import Control.Monad.Eff.Console as Console
+
+import Ansi.Codes (Color(..))
+import Effect (Effect)
+import Effect.Console as Console
+import Effect.Exception (catchException)
 import Node.Process as Process
-import Ansi.Codes (Color(Red))
-import Control.Monad.Eff (Eff)
-import Control.Monad.Eff.Console (log, CONSOLE)
-import Control.Monad.Eff.Exception (catchException, EXCEPTION)
 import Pscid.Console (logColored)
 
-catchLog
-  ∷ ∀ e
-  . String
-  → Eff (console ∷ CONSOLE, exception ∷ EXCEPTION | e) Unit
-  → Eff (console ∷ CONSOLE | e) Unit
+catchLog ∷ String → Effect Unit → Effect Unit
 catchLog m = catchException (const (Console.error m))
 
-noSourceDirectoryError
-  ∷ ∀ e
-  . Eff (console ∷ CONSOLE, process ∷ Process.PROCESS | e) Unit
+noSourceDirectoryError ∷ Effect Unit
 noSourceDirectoryError = do
   logColored Red "ERROR:"
-  log helpString
+  Console.log helpString
   Process.exit 1
   where
     helpString =
