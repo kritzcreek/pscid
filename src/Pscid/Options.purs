@@ -78,7 +78,7 @@ printCLICommand = case _ of
   PulpCommand str [] →
     str
   PulpCommand str includes →
-    str <> " -I " <> (String.joinWith ":" includes)
+    str <> " -I " <> String.joinWith ":" includes
 
 -- | If the command is a PulpCommand (eg. "pulp build"), then the array of
 -- | include paths is set. If the command is an NPM script, the command is
