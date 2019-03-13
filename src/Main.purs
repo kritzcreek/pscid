@@ -2,13 +2,11 @@ module Main where
 
 import Prelude
 
-import Control.Monad.Reader (class MonadAsk, ReaderT, runReaderT)
-import Control.Monad.Reader as Reader
+import Control.Monad.Reader (class MonadAsk, ReaderT, ask, runReaderT)
 import Data.Argonaut (Json)
 import Data.Array as Array
 import Data.Either (Either(..), either, isRight)
 import Data.Maybe (Maybe(..))
-import Data.Newtype (un)
 import Data.String (Pattern(..))
 import Data.String as String
 import Effect (Effect)
@@ -25,12 +23,13 @@ import PscIde.Command (Command(..), Message(..))
 import Pscid.Console (clearConsole, owl, startScreen, suggestionHint)
 import Pscid.Error (catchLog, noSourceDirectoryError)
 import Pscid.Keypress (Key(..), initializeKeypresses, onKeypress)
-import Pscid.Options (CLICommand, PscidSettings(..), optionParser, printCLICommand)
+import Pscid.Options (PscidSettings, optionParser, printCLICommand)
 import Pscid.Process (execCommand)
 import Pscid.Psa (filterWarnings, parseErrors, psaPrinter)
 import Pscid.Server (restartServer, startServer', stopServer')
 import Pscid.Util (both, (∘))
 import Suggest (applySuggestions)
+import Type.Prelude as TE
 
 newtype Pscid a = Pscid (ReaderT (PscidSettings Int) Effect a)
 derive newtype instance functorPscid ∷ Functor Pscid
@@ -38,7 +37,8 @@ derive newtype instance applyPscid ∷ Apply Pscid
 derive newtype instance applicativePscid ∷ Applicative Pscid
 derive newtype instance bindPscid ∷ Bind Pscid
 derive newtype instance monadPscid ∷ Monad Pscid
-derive newtype instance monadAskPscid ∷ MonadAsk (PscidSettings Int) Pscid
+instance monadAskPscid ∷ TE.TypeEquals r (PscidSettings Int) ⇒ MonadAsk r Pscid where
+  ask = Pscid (map TE.from ask)
 instance monadEffectPscid ∷ MonadEffect Pscid where
   liftEffect = Pscid ∘ liftEffect
 
@@ -52,14 +52,14 @@ emptyState = State { errors: [] }
 
 main ∷ Effect Unit
 main = launchAff_ do
-  config@{ port, outputDirectory, sourceDirectories } ← un PscidSettings <$> liftEffect optionParser
+  config@{ port, outputDirectory, sourceDirectories } ← liftEffect optionParser
   when (Array.null sourceDirectories) (liftEffect noSourceDirectoryError)
   stateRef ← liftEffect (Ref.new emptyState)
   Console.log "Starting purs ide server"
   r ← attempt (startServer' port outputDirectory)
   case r of
     Right (Right port') → do
-      let config' = PscidSettings (config { port = port' })
+      let config' = config { port = port' }
       Message directory ← do
         delay (Milliseconds 500.0)
         _ ← load port' [] []
@@ -167,13 +167,3 @@ handleRebuildResult file censorCodes result = do
         errors
 
 foreign import gaze ∷ EffectFn2 (Array String) (String → Effect Unit) Unit
-
-ask ∷ Pscid { port ∷ Int
-             , buildCommand ∷ CLICommand
-             , outputDirectory ∷ String
-             , testCommand ∷ CLICommand
-             , testAfterRebuild ∷ Boolean
-             , sourceDirectories ∷ Array String
-             , censorCodes ∷ Array String
-             }
-ask = un PscidSettings <$> Reader.ask
