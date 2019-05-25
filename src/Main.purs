@@ -94,26 +94,26 @@ keyHandler ∷ Ref State → Key → Pscid Unit
 keyHandler stateRef k = do
   {port, buildCommand, outputDirectory, testCommand} ← ask
   case k of
-    Key {ctrl: false, name: "b", meta: false, shift: false} →
+    Key {ctrl: false, name: "b", meta: false, shift: _} →
       liftEffect (execCommand "Build" $ printCLICommand buildCommand)
-    Key {ctrl: false, name: "t", meta: false, shift: false} →
+    Key {ctrl: false, name: "t", meta: false, shift: _} →
       liftEffect (execCommand "Test" $ printCLICommand testCommand)
-    Key {ctrl: false, name: "r", meta: false, shift: false} → liftEffect do
+    Key {ctrl: false, name: "r", meta: false, shift: _} → liftEffect do
       clearConsole
       catchLog "Failed to restart server" $ launchAff_ do
         restartServer port outputDirectory
         load port [] []
       Console.log owl
-    Key {ctrl: false, name: "s", meta: false, shift: false} → liftEffect do
+    Key {ctrl: false, name: "s", meta: false, shift: _} → liftEffect do
       State state ← Ref.read stateRef
       case Array.head state.errors of
         Nothing →
           Console.log "No suggestions available"
         Just e →
           catchLog "Couldn't apply suggestion." (applySuggestions [e])
-    Key {ctrl: false, name: "q", meta: false, shift: false} →
+    Key {ctrl: false, name: "q", meta: false, shift: _} →
       liftEffect (Console.log "Bye!" <* runAff (either exit exit) (stopServer' port))
-    Key {ctrl: true, name: "c", meta: false, shift: false} →
+    Key {ctrl: true, name: "c", meta: false, shift: _} →
       Console.log "Press q to exit"
     Key {ctrl, name, meta, shift} →
       Console.log name
