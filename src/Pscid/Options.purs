@@ -5,18 +5,12 @@ import Prelude
 import Control.Alt ((<|>))
 import Control.MonadPlus (guard)
 import Data.Array as Array
-import Data.Either (Either(..))
-import Data.Int as Int
-import Data.Maybe (Maybe(..), fromMaybe)
+import Data.Maybe (Maybe(..), fromMaybe, optional)
 import Data.String as String
 import Effect (Effect)
-import Effect.Console as Console
-import Effect.Exception (catchException)
-import Global (readInt)
 import Node.Platform (Platform(..))
 import Node.Process (platform)
-import Node.Yargs.Applicative (flag, runY, yarg)
-import Node.Yargs.Setup (defaultHelp, defaultVersion, example, usage)
+import Options.Applicative as OA
 import Pscid.Util ((∘))
 
 type PscidSettings a =
@@ -106,58 +100,75 @@ mkCommand cmd = do
 
   pure $ fromMaybe pulpCommand (specificCommand <|> buildCommand)
 
-optionParser ∷ Effect PscidOptions
-optionParser =
-  let
-    setup = usage "$0 -p 4245"
-      <> example "$0 -p 4245" "Watching ... on port 4245"
-      <> defaultHelp
-      <> defaultVersion
-  in
-   catchException (const do
-                      Console.error "Failed parsing the arguments."
-                      Console.error "Falling back to default options"
-                      mkDefaultOptions) $
-     runY setup $ buildOptions
-       <$> yarg "p" ["port"] (Just "The Port") (Left "") false
-       <*> flag "test" [] (Just "Test project after save")
-       <*> yarg "I" ["include"]
-         (Just "Directories for PureScript source files, separated by `;`")
-         (Left "")
-         false
-       <*> yarg "O" ["output"]
-         (Just "Output directory for compiled JavaScript")
-         (Left "output")
-         false
-       <*> yarg "censor-codes" []
-         (Just "Warning codes to ignore, seperated by `,`")
-         (Left "")
-         false
-
-buildOptions
-  ∷ String
-  → Boolean
-  → String
-  → String
-  → String
-  → Effect PscidOptions
-buildOptions port testAfterRebuild includes outputDirectory censor = do
-  defaults ← mkDefaultOptions
-  let includesArr = Array.filter (not String.null) (String.split (String.Pattern ";") includes)
-      sourceDirectories = defaults.sourceDirectories <> includesArr
-      censorCodes = Array.filter (not String.null) (String.split (String.Pattern ",") censor)
-      buildCommand = setCommandIncludes includesArr defaults.buildCommand
-      testCommand = setCommandIncludes includesArr defaults.testCommand
-
-  pure
-    { port: Int.fromNumber (readInt 10 port)
-    , testAfterRebuild
-    , sourceDirectories
-    , censorCodes
-    , buildCommand
-    , outputDirectory
-    , testCommand
-    }
-
 foreign import hasNamedScript ∷ String → Effect Boolean
 foreign import glob ∷ String → Effect (Array String)
+
+-- | Accepts defaults options and
+buildOptions
+  ∷ PscidOptions
+  → { port ∷ Maybe Int
+    , testAfterRebuild ∷ Boolean
+    , includes ∷ String
+    , outputDirectory ∷ String
+    , censor ∷ String
+    }
+  → PscidOptions
+buildOptions defaults {port, testAfterRebuild, includes, outputDirectory, censor} = do
+  { port
+  , testAfterRebuild
+  , sourceDirectories: defaults.sourceDirectories <> includesArr
+  , censorCodes: sepArguments "," censor
+  , outputDirectory
+  , buildCommand: setCommandIncludes includesArr defaults.buildCommand
+  , testCommand: setCommandIncludes includesArr defaults.testCommand
+  }
+  where
+    includesArr = sepArguments ";" includes
+
+    sepArguments ∷ String → String → Array String
+    sepArguments sep =
+      Array.filter (not String.null) ∘ String.split (String.Pattern sep)
+
+options :: PscidOptions → OA.Parser PscidOptions
+options defaults = ado
+  port ← optional
+    (OA.option
+      OA.int
+      (OA.long "port"
+        <> OA.short 'p'
+        <> OA.metavar "PORT"
+        <> OA.help "What port to start the ide server on"))
+  testAfterRebuild ← OA.switch
+    (OA.long "test"
+     <> OA.help "Run tests after successful rebuild")
+  includes ← OA.strOption
+    (OA.long "include"
+     <> OA.short 'I'
+     <> OA.help "Directories for additional PureScript source files, separated by `;`"
+     <> OA.value ""
+     <> OA.metavar "INCLUDES")
+    <|> pure ""
+  censor ← OA.strOption
+    (OA.long "censor-codes"
+     <> OA.help "Warning codes to ignore, seperated by `,`"
+     <> OA.value ""
+     <> OA.metavar "CENSOR-CODES")
+    <|> pure ""
+  outputDirectory ← OA.strOption
+    (OA.long "output"
+     <> OA.short 'O'
+     <> OA.help "Output directory for compiled JavaScript"
+     <> OA.value "output"
+     <> OA.metavar "OUTPUT")
+    <|> pure "output"
+  in buildOptions defaults { port, testAfterRebuild, outputDirectory, includes, censor }
+
+optionParser :: Effect PscidOptions
+optionParser = do
+  defaults ← mkDefaultOptions
+  OA.execParser (opts defaults)
+  where
+    opts defaults = OA.info (options defaults OA.<**> OA.helper)
+      ( OA.fullDesc
+     <> OA.progDesc "Watches and rebuilds PureScript source files"
+     <> OA.header "pscid - A lightweight, fast and unintrusive PureScript file-watcher" )
