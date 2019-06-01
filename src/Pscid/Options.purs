@@ -28,9 +28,9 @@ type PscidOptions = PscidSettings (Maybe Int)
 defaultOptions ∷ PscidOptions
 defaultOptions =
   { port: Nothing
-  , buildCommand: PulpCommand (pulpCmd <> " build") []
+  , buildCommand: BuildCommand (pulpCmd <> " build") []
   , outputDirectory: "output"
-  , testCommand: PulpCommand (pulpCmd <> " test") []
+  , testCommand: BuildCommand (pulpCmd <> " test") []
   , testAfterRebuild: false
   , sourceDirectories: []
   , censorCodes: []
@@ -45,6 +45,9 @@ scanDefaultDirectories =
     mkGlob dir = dir <> "/**/*.purs"
   in
    Array.filterA (map (not ∘ Array.null) ∘ glob ∘ mkGlob) defaultDirectories
+
+spagoCmd ∷ String
+spagoCmd = if platform == Just Win32 then "spago.cmd" else "spago"
 
 pulpCmd ∷ String
 pulpCmd = if platform == Just Win32 then "pulp.cmd" else "pulp"
@@ -63,25 +66,26 @@ type IncludePath = String
 
 data CLICommand
   = ScriptCommand String
-  | PulpCommand String (Array IncludePath)
+  | BuildCommand String (Array IncludePath)
 
 printCLICommand ∷ CLICommand → String
 printCLICommand = case _ of
   ScriptCommand str →
     str
-  PulpCommand str [] →
+  BuildCommand str [] →
     str
-  PulpCommand str includes →
+  BuildCommand str includes →
     str <> " -I " <> String.joinWith ":" includes
 
--- | If the command is a PulpCommand (eg. "pulp build"), then the array of
--- | include paths is set. If the command is an NPM script, the command is
+-- | If the command is a BuildCommand (eg. "spago/pulp build"), then the array
+-- | of include paths is set. If the command is an NPM script, the command is
 -- | left unchanged. This is because it's impossible to guarantee that the NPM
--- | script directly executes "pulp build" (it may execute another script), and
--- | therefore we cannot simply append the includes onto the end of the command.
+-- | script directly executes "spago/pulp build" (it may execute another
+-- | script), and therefore we cannot simply append the includes onto the end of
+-- | the command.
 setCommandIncludes ∷ Array IncludePath → CLICommand → CLICommand
 setCommandIncludes includesArr cmd = case cmd of
-  PulpCommand str _ → PulpCommand str includesArr
+  BuildCommand str _ → BuildCommand str includesArr
   ScriptCommand str → ScriptCommand str
 
 mkCommand ∷ String → Effect CLICommand
@@ -89,16 +93,16 @@ mkCommand cmd = do
   pscidSpecific ← hasNamedScript ("pscid:" <> cmd)
   namedScript ← hasNamedScript cmd
 
-  let specificCommand =
+  let npmSpecificCommand =
         guard pscidSpecific $> ScriptCommand ("npm run -s pscid:" <> cmd)
 
-      buildCommand =
+      npmBuildCommand =
         guard namedScript $> ScriptCommand ("npm run -s " <> cmd)
 
-      pulpCommand =
-        PulpCommand (pulpCmd <> " " <> cmd) []
+      buildCommand =
+        BuildCommand (pulpCmd <> " " <> cmd) []
 
-  pure $ fromMaybe pulpCommand (specificCommand <|> buildCommand)
+  pure $ fromMaybe buildCommand (npmSpecificCommand <|> npmBuildCommand)
 
 foreign import hasNamedScript ∷ String → Effect Boolean
 foreign import glob ∷ String → Effect (Array String)
