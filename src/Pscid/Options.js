@@ -1,15 +1,20 @@
 //module Pscid.Options
 
+exports.isSpagoProject = function(){
+  return function(){
+    try {
+      return fs.existsSync(process.cwd() + '/spago.dhall');
+    } catch (e) {
+      return false;
+    }
+  }
+}
+
 exports.hasNamedScript = function(name){
   return function(){
     try {
       var pjson = require(process.cwd() + '/package.json');
-      if (pjson.scripts && pjson.scripts[name]){
-        return true;
-      }
-      else {
-        return false;
-      }
+      return pjson.scripts && pjson.scripts[name];
     } catch (e) {
       return false;
     }

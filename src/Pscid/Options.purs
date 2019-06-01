@@ -90,6 +90,7 @@ setCommandIncludes includesArr cmd = case cmd of
 
 mkCommand ∷ String → Effect CLICommand
 mkCommand cmd = do
+  spagoProject ← isSpagoProject
   pscidSpecific ← hasNamedScript ("pscid:" <> cmd)
   namedScript ← hasNamedScript cmd
 
@@ -100,10 +101,13 @@ mkCommand cmd = do
         guard namedScript $> ScriptCommand ("npm run -s " <> cmd)
 
       buildCommand =
-        BuildCommand (pulpCmd <> " " <> cmd) []
+        if spagoProject
+        then BuildCommand (spagoCmd <> " " <> cmd) []
+        else BuildCommand (pulpCmd <> " " <> cmd) []
 
   pure $ fromMaybe buildCommand (npmSpecificCommand <|> npmBuildCommand)
 
+foreign import isSpagoProject ∷ Effect Boolean
 foreign import hasNamedScript ∷ String → Effect Boolean
 foreign import glob ∷ String → Effect (Array String)
 
