@@ -95,10 +95,10 @@ mkCommand cmd = do
   namedScript ← hasNamedScript cmd
 
   let npmSpecificCommand =
-        guard pscidSpecific $> ScriptCommand ("npm run -s pscid:" <> cmd)
+        guard pscidSpecific $> ScriptCommand (npmCmd <> " run -s pscid:" <> cmd)
 
       npmBuildCommand =
-        guard namedScript $> ScriptCommand ("npm run -s " <> cmd)
+        guard namedScript $> ScriptCommand (npmCmd <> " run -s " <> cmd)
 
       buildCommand =
         if spagoProject
