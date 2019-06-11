@@ -1,12 +1,10 @@
 //module Pscid.Options
 
 exports.isSpagoProject = function(){
-  return function(){
-    try {
-      return fs.existsSync(process.cwd() + '/spago.dhall');
-    } catch (e) {
-      return false;
-    }
+  try {
+    return fs.existsSync(process.cwd() + '/spago.dhall');
+  } catch (e) {
+    return false;
   }
 }
 
