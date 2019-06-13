@@ -126,7 +126,7 @@ triggerRebuild stateRef file = do
   {port, testCommand, testAfterRebuild, censorCodes} ← ask
   let fileName = changeExtension file "purs"
   liftEffect ∘ catchLog "We couldn't talk to the server" $ launchAff_ do
-    result ← sendCommandR port (RebuildCmd fileName Nothing)
+    result ← sendCommandR port (RebuildCmd fileName Nothing Nothing)
     case result of
       Left _ → Console.log "We couldn't talk to the server"
       Right errs → liftEffect do
