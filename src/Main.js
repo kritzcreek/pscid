@@ -3,7 +3,7 @@
 var gaze = require('gaze');
 
 exports.gaze = function(globs, cb){
-  gaze(globs, function(err, watcher) {
+  gaze(globs, { follow: true }, function(err, watcher) {
     // Files have all started watching
     // watcher === this
 
