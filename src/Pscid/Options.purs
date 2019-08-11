@@ -8,8 +8,12 @@ import Data.Array as Array
 import Data.Maybe (Maybe(..), fromMaybe, optional)
 import Data.String as String
 import Effect (Effect)
+import Effect.Exception (catchException)
+import Node.FS.Sync as FSSync
+import Node.Path as Path
 import Node.Platform (Platform(..))
 import Node.Process (platform)
+import Node.Process as Process
 import Options.Applicative as OA
 import Pscid.Util ((∘))
 
@@ -107,7 +111,12 @@ mkCommand cmd = do
 
   pure $ fromMaybe buildCommand (npmSpecificCommand <|> npmBuildCommand)
 
-foreign import isSpagoProject ∷ Effect Boolean
+isSpagoProject ∷ Effect Boolean
+isSpagoProject = do
+  cwd ← Process.cwd
+  let fp = Path.concat [cwd, "spago.dhall"]
+  catchException (\_ → pure false) (FSSync.exists fp)
+
 foreign import hasNamedScript ∷ String → Effect Boolean
 foreign import glob ∷ String → Effect (Array String)
 

@@ -19,7 +19,8 @@
     "purescript-node-streams": "^4.0.0",
     "purescript-node-process": "^7.0.0",
     "purescript-suggest": "^5.0.0",
-    "purescript-arrays": "^5.3.0"
+    "purescript-arrays": "^5.3.0",
+    "purescript-node-path": "^3.0.0"
   },
   "devDependencies": {
     "purescript-psci-support": "^4.0.0",
