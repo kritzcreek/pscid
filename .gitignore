@@ -7,3 +7,4 @@
 /.psa-stash
 .DS_Store
 /.psc-ide-port
+/.spago*
