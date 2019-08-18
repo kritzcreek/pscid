@@ -10,8 +10,8 @@
     "test": "test"
   },
   "scripts": {
-    "compile": "purs compile \"src/**/*.purs\" \"bower_components/purescript-*/src/**/*.purs\"",
-    "prepack": "rimraf output && npm run compile",
+    "compile": "spago build",
+    "prepack": "rimraf output && rimraf dist && npm run compile",
     "build": "npm run -s compile",
     "start": "node index.js"
   },
@@ -29,6 +29,7 @@
   },
   "devDependencies": {
     "purescript": "^0.13.0",
-    "rimraf": "^2.6.3"
+    "rimraf": "^2.6.3",
+    "spago": "^0.8.4"
   }
 }
