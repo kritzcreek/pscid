@@ -1,4 +1,4 @@
-[![Build Status](https://dev.azure.com/christophhegemann1337/pscid/_apis/build/status/kRITZCREEK.pscid?branchName=master)](https://dev.azure.com/christophhegemann1337/pscid/_build/latest?definitionId=1&branchName=master)
+[![CI Status](https://github.com/kritzcreek/pscid/workflows/CI/badge.svg)](https://github.com/kritzcreek/pscid/actions)
 [![npm version](https://badge.fury.io/js/pscid.svg)](https://badge.fury.io/js/pscid)
 
 pscid
