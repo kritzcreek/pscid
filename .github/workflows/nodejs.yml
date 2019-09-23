@@ -1,4 +1,4 @@
-name: pscid CI
+name: CI
 
 on: [push]
 
