@@ -1,6 +1,9 @@
 /.github/
 /.spago/
-/node_modules/
 /.pulp-cache/
 /.psci*
 /output/*/externs.json
+/output/cache-db.json
+*.dhall
+# Until npm stops auto-ignoring Argonaut.Core https://github.com/npm/npm-packlist/pull/38
+!*.core
