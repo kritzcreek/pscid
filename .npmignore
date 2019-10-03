@@ -1,8 +1,6 @@
-/bower_components/
+/.github/
+/.spago/
 /node_modules/
 /.pulp-cache/
 /.psci*
-/src/.webpack.js
-/test/
-/bin/
 /output/*/externs.json
