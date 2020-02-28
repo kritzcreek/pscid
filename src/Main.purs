@@ -2,8 +2,8 @@ module Main where
 
 import Prelude
 
-import Data.Argonaut (Json)
 import Control.Monad.Reader (class MonadAsk, ReaderT, ask, runReaderT)
+import Data.Argonaut (Json)
 import Data.Array as Array
 import Data.Either (Either(..), either, isRight)
 import Data.Maybe (Maybe(..))
