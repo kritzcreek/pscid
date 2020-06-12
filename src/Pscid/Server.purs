@@ -14,6 +14,7 @@ import Effect.Aff (Aff, attempt)
 import Effect.Class (liftEffect)
 import Effect.Console as Console
 import Effect.Exception (try)
+import Node.ChildProcess as CP
 import Node.Process as Process
 import PscIde as PscIde
 import PscIde.Command (Message(..))
@@ -54,6 +55,7 @@ startServer' optPort outputDir = do
             { port = Just newPort
             , cwd = Just dir
             , outputDirectory = Just outputDir
+            , stdio = CP.ignore
             }
         )
     where
