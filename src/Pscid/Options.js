@@ -16,3 +16,13 @@ exports.glob = function(pattern) {
     return require('glob').sync(pattern);
   };
 };
+
+exports.version = function() {
+  // This one references pscid's package.json
+  var pjson = require('../../package.json');
+  if(!pjson) {
+    return "Unknown";
+  } else {
+    return pjson.version;
+  }
+}

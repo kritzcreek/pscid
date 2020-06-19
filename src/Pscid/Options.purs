@@ -8,6 +8,7 @@ import Data.Array as Array
 import Data.Maybe (Maybe(..), fromMaybe, optional)
 import Data.String as String
 import Effect (Effect)
+import Effect.Console as Console
 import Effect.Exception (catchException)
 import Node.FS.Sync as FSSync
 import Node.Path as Path
@@ -117,9 +118,6 @@ isSpagoProject = do
   let fp = Path.concat [cwd, "spago.dhall"]
   catchException (\_ → pure false) (FSSync.exists fp)
 
-foreign import hasNamedScript ∷ String → Effect Boolean
-foreign import glob ∷ String → Effect (Array String)
-
 -- | Accepts defaults options and
 buildOptions
   ∷ PscidOptions
@@ -146,8 +144,13 @@ buildOptions defaults {port, testAfterRebuild, includes, outputDirectory, censor
     sepArguments sep =
       Array.filter (not String.null) ∘ String.split (String.Pattern sep)
 
-options :: PscidOptions → OA.Parser PscidOptions
+-- | A parser for pscid's options. A `Nothing` signals the user
+-- | requested the version
+options :: PscidOptions → OA.Parser (Maybe PscidOptions)
 options defaults = ado
+  displayVersion ← OA.switch
+    (OA.long "version"
+     <> OA.help "Displays the version of this program")
   port ← optional
     (OA.option
       OA.int
@@ -178,14 +181,26 @@ options defaults = ado
      <> OA.value "output"
      <> OA.metavar "OUTPUT")
     <|> pure "output"
-  in buildOptions defaults { port, testAfterRebuild, outputDirectory, includes, censor }
+  in
+    if displayVersion
+      then Nothing
+      else Just (buildOptions defaults { port, testAfterRebuild, outputDirectory, includes, censor })
 
 optionParser :: Effect PscidOptions
 optionParser = do
   defaults ← mkDefaultOptions
-  OA.execParser (opts defaults)
+  OA.execParser (opts defaults) >>= case _ of
+    Nothing -> do
+      Console.log =<< version
+      Process.exit 0
+    Just os ->
+      pure os
   where
     opts defaults = OA.info (options defaults OA.<**> OA.helper)
       ( OA.fullDesc
      <> OA.progDesc "Watches and rebuilds PureScript source files"
      <> OA.header "pscid - A lightweight, fast and unintrusive PureScript file-watcher" )
+
+foreign import hasNamedScript ∷ String → Effect Boolean
+foreign import glob ∷ String → Effect (Array String)
+foreign import version ::Effect String
