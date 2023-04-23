@@ -2,7 +2,7 @@
 
 import gaze_ from 'gaze';
 
-export let gaze = function (globs, cb) {
+export function gaze(globs, cb) {
   gaze_(globs, { follow: true }, function (err, watcher) {
     // Files have all started watching
     // watcher === this
@@ -18,4 +18,4 @@ export let gaze = function (globs, cb) {
       cb(filepath)();
     });
   });
-};
+}

@@ -3,7 +3,7 @@
 import { createRequire } from 'module';
 const require = createRequire(import.meta.url);
 
-export let hasNamedScript = function (name) {
+export function hasNamedScript(name) {
   return function () {
     try {
       var pjson = require(process.cwd() + '/package.json');
@@ -12,15 +12,15 @@ export let hasNamedScript = function (name) {
       return false;
     }
   };
-};
+}
 
-export let glob = function (pattern) {
+export function glob(pattern) {
   return function () {
     return require('glob').sync(pattern);
   };
-};
+}
 
-export let version = function () {
+export function version() {
   // This one references pscid's package.json
   var pjson = require('../../package.json');
   if (!pjson) {
@@ -28,4 +28,4 @@ export let version = function () {
   } else {
     return pjson.version;
   }
-};
+}

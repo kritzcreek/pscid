@@ -1,2 +1,3 @@
 #!/usr/bin/env node
-require('./output/Main').main();
+import { main } from './output/Main/index.js'
+main()

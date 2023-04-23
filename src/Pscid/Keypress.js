@@ -2,13 +2,13 @@
 
 import keypress from 'keypress';
 
-export let initializeKeypresses = function () {
+export function initializeKeypresses() {
   keypress(process.stdin);
   process.stdin.setRawMode(true);
   process.stdin.resume();
-};
+}
 
-export let onKeypress = function (cb) {
+export function onKeypress(cb) {
   return function () {
     process.stdin.on('keypress', function (ch, key) {
       if (key) {
@@ -16,4 +16,4 @@ export let onKeypress = function (cb) {
       }
     });
   };
-};
+}

@@ -1,5 +1,6 @@
 {
   "name": "pscid",
+  "type": "module",
   "version": "2.9.3",
   "description": "A lightweight editor experience for PureScript development",
   "repository": "https://github.com/kritzcreek/pscid",
@@ -30,6 +31,6 @@
   "devDependencies": {
     "purescript": "^0.15.7",
     "rimraf": "^3.0.2",
-    "spago": "^0.15.3"
+    "spago": "^0.20.8"
   }
 }
