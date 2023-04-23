@@ -1,4 +1,10 @@
 let upstream =
-      https://github.com/purescript/package-sets/releases/download/psc-0.13.6-20200507/packages.dhall sha256:9c1e8951e721b79de1de551f31ecb5a339e82bbd43300eb5ccfb1bf8cf7bbd62
+      https://github.com/purescript/package-sets/releases/download/psc-0.15.7-20230408/packages.dhall
+        sha256:eafb4e5bcbc2de6172e9457f321764567b33bc7279bd6952468d0d422aa33948
 
-in  upstream
+let overrides =
+      { suggest =
+          /home/semio/src/purescript/purescript-suggest/spago.dhall as Location
+      }
+
+in  upstream // overrides

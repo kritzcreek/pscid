@@ -102,7 +102,8 @@ keyHandler stateRef k = do
       clearConsole
       catchLog "Failed to restart server" $ launchAff_ do
         restartServer port outputDirectory
-        load port [] []
+        _ <- load port [] []
+        pure unit
       Console.log owl
     Key {ctrl: false, name: "s", meta: false} → liftEffect do
       State state ← Ref.read stateRef

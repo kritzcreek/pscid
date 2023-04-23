@@ -7,8 +7,9 @@ module Pscid.Psa
 
 import Prelude
 
-import Data.Argonaut (Json, decodeJson)
+import Data.Argonaut (Json, decodeJson, printJsonDecodeError)
 import Data.Array as Array
+import Data.Bifunctor (lmap)
 import Data.Either (Either, hush)
 import Data.Maybe (Maybe(..), fromMaybe)
 import Data.Maybe as Maybe
@@ -56,7 +57,7 @@ print successMessage options {warnings, errors} = do
     toString = renderRow (String.joinWith "" ∘ map (renderAnsi options.ansi))
 
 parseErrors ∷ Json → Either String (Array PsaError)
-parseErrors j = traverse parsePsaError =<< decodeJson j
+parseErrors j = traverse parsePsaError =<< (lmap printJsonDecodeError $ decodeJson j)
 
 parseFirstError ∷ Json → Maybe PsaError
 parseFirstError j = Array.head =<< hush (parseErrors j)

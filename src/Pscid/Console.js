@@ -1,3 +1,3 @@
-exports.clearConsole = function() {
-    process.stdout.write('\033c');
+export let clearConsole = function () {
+  process.stdout.write('\x1Bc');
 };
