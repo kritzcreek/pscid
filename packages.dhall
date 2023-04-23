@@ -4,7 +4,26 @@ let upstream =
 
 let overrides =
       { suggest =
-          /home/semio/src/purescript/purescript-suggest/spago.dhall as Location
+        { dependencies =
+          [ "console"
+          , "effect"
+          , "prelude"
+          , "either"
+          , "test-unit"
+          , "node-fs"
+          , "psa-utils"
+          , "lists"
+          , "arrays"
+          , "foldable-traversable"
+          , "maybe"
+          , "node-buffer"
+          , "ordered-collections"
+          , "refs"
+          , "strings"
+          ]
+        , repo = "https://github.com/semio/purescript-suggest.git"
+        , version = "master"
+        }
       }
 
 in  upstream // overrides
