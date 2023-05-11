@@ -1,7 +1,10 @@
 //module Pscid.Options
 
-exports.hasNamedScript = function(name){
-  return function(){
+import { createRequire } from 'module';
+const require = createRequire(import.meta.url);
+
+export function hasNamedScript(name) {
+  return function () {
     try {
       var pjson = require(process.cwd() + '/package.json');
       return pjson.scripts && pjson.scripts[name];
@@ -9,19 +12,19 @@ exports.hasNamedScript = function(name){
       return false;
     }
   };
-};
+}
 
-exports.glob = function(pattern) {
-  return function() {
+export function glob(pattern) {
+  return function () {
     return require('glob').sync(pattern);
   };
-};
+}
 
-exports.version = function() {
+export function version() {
   // This one references pscid's package.json
   var pjson = require('../../package.json');
-  if(!pjson) {
-    return "Unknown";
+  if (!pjson) {
+    return 'Unknown';
   } else {
     return pjson.version;
   }

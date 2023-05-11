@@ -1,5 +1,4 @@
 /node_modules/
-/.pulp-cache/
 /output/
 /.psci*
 /.psa-stash
