@@ -4,3 +4,4 @@
 /output/*/externs.cbor
 /output/cache-db.json
 *.dhall
+/.psc-ide-port
