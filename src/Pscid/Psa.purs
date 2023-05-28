@@ -10,7 +10,7 @@ import Prelude
 import Data.Argonaut (Json, decodeJson, printJsonDecodeError)
 import Data.Array as Array
 import Data.Bifunctor (lmap)
-import Data.Either (Either, hush)
+import Data.Either (Either)
 import Data.Maybe (Maybe(..), fromMaybe)
 import Data.Maybe as Maybe
 import Data.Set as Set
@@ -43,11 +43,11 @@ defaultOptions =
 
 print ∷ String → PsaOptions → Output → Effect Unit
 print successMessage options {warnings, errors} = do
-  iter_ warnings \i warning → do
+  iter_ warnings \_ warning → do
     Console.error (toString (renderWarning 1 1 warning))
     Console.error ""
 
-  iter_ errors \i error → do
+  iter_ errors \_ error → do
     Console.error (toString (renderError 1 1 error))
     Console.error ""
 
@@ -58,9 +58,6 @@ print successMessage options {warnings, errors} = do
 
 parseErrors ∷ Json → Either String (Array PsaError)
 parseErrors j = traverse parsePsaError =<< (lmap printJsonDecodeError $ decodeJson j)
-
-parseFirstError ∷ Json → Maybe PsaError
-parseFirstError j = Array.head =<< hush (parseErrors j)
 
 emptyResult ∷ PsaResult
 emptyResult = {warnings: [], errors: []}

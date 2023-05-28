@@ -135,7 +135,7 @@ triggerRebuild stateRef file = do
         Ref.write (State {errors: parsedErrors}) stateRef
         case Array.head parsedErrors >>= _.suggestion of
           Nothing → pure unit
-          Just s → suggestionHint
+          Just _ → suggestionHint
         when (testAfterRebuild && isRight errs)
           (execCommand "Test" $ printCLICommand testCommand)
 
