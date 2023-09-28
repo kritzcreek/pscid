@@ -1,7 +1,7 @@
 {
   "name": "pscid",
   "type": "module",
-  "version": "2.10.0",
+  "version": "2.11.0",
   "description": "A lightweight editor experience for PureScript development",
   "repository": "https://github.com/kritzcreek/pscid",
   "bin": {
