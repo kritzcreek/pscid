@@ -23,8 +23,8 @@ owl =
 helpText ∷ String
 helpText =
   """
-Press b to run a full build (tries "npm run pscid:build" then "npm run build" then "spago/pulp build")
-Press t to test (tries "npm run pscid:test" then "npm run test" then "spago/pulp test")
+Press b to run a full build (tries "npm run pscid:build" then "npm run build" then "spago build")
+Press t to test (tries "npm run pscid:test" then "npm run test" then "spago test")
 Press r to reset
 Press q to quit
   """

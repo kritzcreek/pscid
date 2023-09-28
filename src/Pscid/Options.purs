@@ -9,9 +9,6 @@ import Data.Maybe (Maybe(..), fromMaybe, optional)
 import Data.String as String
 import Effect (Effect)
 import Effect.Console as Console
-import Effect.Exception (catchException)
-import Node.FS.Sync as FSSync
-import Node.Path as Path
 import Node.Platform (Platform(..))
 import Node.Process (platform)
 import Node.Process as Process
@@ -33,9 +30,9 @@ type PscidOptions = PscidSettings (Maybe Int)
 defaultOptions ∷ PscidOptions
 defaultOptions =
   { port: Nothing
-  , buildCommand: BuildCommand (pulpCmd <> " build") []
+  , buildCommand: BuildCommand (spagoCmd <> " build") []
   , outputDirectory: "output"
-  , testCommand: BuildCommand (pulpCmd <> " test") []
+  , testCommand: BuildCommand (spagoCmd <> " test") []
   , testAfterRebuild: false
   , sourceDirectories: []
   , censorCodes: []
@@ -53,9 +50,6 @@ scanDefaultDirectories =
 
 spagoCmd ∷ String
 spagoCmd = if platform == Just Win32 then "spago.cmd" else "spago"
-
-pulpCmd ∷ String
-pulpCmd = if platform == Just Win32 then "pulp.cmd" else "pulp"
 
 npmCmd ∷ String
 npmCmd = if platform == Just Win32 then "npm.cmd" else "npm"
@@ -82,10 +76,10 @@ printCLICommand = case _ of
   BuildCommand str includes →
     str <> " -I " <> String.joinWith ":" includes
 
--- | If the command is a BuildCommand (eg. "spago/pulp build"), then the array
+-- | If the command is a BuildCommand (eg. "spago build"), then the array
 -- | of include paths is set. If the command is an NPM script, the command is
 -- | left unchanged. This is because it's impossible to guarantee that the NPM
--- | script directly executes "spago/pulp build" (it may execute another
+-- | script directly executes "spago build" (it may execute another
 -- | script), and therefore we cannot simply append the includes onto the end of
 -- | the command.
 setCommandIncludes ∷ Array IncludePath → CLICommand → CLICommand
@@ -95,7 +89,6 @@ setCommandIncludes includesArr cmd = case cmd of
 
 mkCommand ∷ String → Effect CLICommand
 mkCommand cmd = do
-  spagoProject ← isSpagoProject
   pscidSpecific ← hasNamedScript ("pscid:" <> cmd)
   namedScript ← hasNamedScript cmd
 
@@ -105,22 +98,9 @@ mkCommand cmd = do
       npmBuildCommand =
         guard namedScript $> ScriptCommand (npmCmd <> " run -s " <> cmd)
 
-      buildCommand =
-        if spagoProject
-        then BuildCommand (spagoCmd <> " " <> cmd) []
-        else BuildCommand (pulpCmd <> " " <> cmd) []
+      buildCommand = BuildCommand (spagoCmd <> " " <> cmd) []
 
   pure $ fromMaybe buildCommand (npmSpecificCommand <|> npmBuildCommand)
-
-isSpagoProject ∷ Effect Boolean
-isSpagoProject = ado
-  dhallConfig <- exists "spago.dhall"
-  spagoConfig <- exists "spago.yaml"
-  in dhallConfig || spagoConfig
-  where 
-  exists config = do
-    cwd ← Process.cwd
-    catchException (\_ → pure false) (FSSync.exists (Path.concat [cwd, config]))
 
 -- | Accepts defaults options and
 buildOptions
