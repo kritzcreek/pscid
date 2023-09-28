@@ -25,7 +25,6 @@ import Psa (Output, PsaError, PsaOptions, PsaResult, StatVerbosity(..), Suggesti
 import Psa.Printer (renderAnsi, renderRow)
 import Psa.Printer.Default (renderError, renderWarning)
 import Psa.Util (iter_)
-import Pscid.Util ((∘))
 
 defaultOptions :: PsaOptions
 defaultOptions =
@@ -54,7 +53,7 @@ print successMessage options { warnings, errors } = do
   when (Array.null warnings && Array.null errors)
     (Console.error successMessage)
   where
-  toString = renderRow (String.joinWith "" ∘ map (renderAnsi options.ansi))
+  toString = renderRow (String.joinWith "" <<< map (renderAnsi options.ansi))
 
 parseErrors :: Json -> Either String (Array PsaError)
 parseErrors j = traverse parsePsaError =<< (lmap printJsonDecodeError $ decodeJson j)
@@ -99,7 +98,7 @@ reorderWarnings errors =
           && String.contains (String.Pattern "Prelude")
       ) replacement
     { yes, no } =
-      Array.partition (Maybe.maybe false isPreludeImport ∘ _.suggestion) errors
+      Array.partition (Maybe.maybe false isPreludeImport <<< _.suggestion) errors
   in
     no <> yes
 

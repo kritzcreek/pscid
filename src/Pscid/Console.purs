@@ -6,10 +6,9 @@ import Ansi.Codes (Color(..))
 import Ansi.Output (foreground, withGraphics)
 import Effect (Effect)
 import Effect.Console as Console
-import Pscid.Util ((∘))
 
 logColored :: Color -> String -> Effect Unit
-logColored c = Console.log ∘ withGraphics (foreground c)
+logColored c s = Console.log (withGraphics (foreground c) s)
 
 owl :: String
 owl =

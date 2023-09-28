@@ -27,7 +27,7 @@ import Pscid.Options (PscidSettings, optionParser, printCLICommand)
 import Pscid.Process (execCommand)
 import Pscid.Psa (filterWarnings, parseErrors, psaPrinter)
 import Pscid.Server (restartServer, startServer', stopServer')
-import Pscid.Util (both, (∘))
+import Pscid.Util (both)
 import Suggest (applySuggestions)
 import Type.Prelude as TE
 
@@ -42,7 +42,7 @@ instance monadAskPscid :: TE.TypeEquals r (PscidSettings Int) => MonadAsk r Psci
   ask = Pscid (map TE.from ask)
 
 instance monadEffectPscid :: MonadEffect Pscid where
-  liftEffect = Pscid ∘ liftEffect
+  liftEffect = Pscid <<< liftEffect
 
 runPscid :: forall a. Pscid a -> PscidSettings Int -> Effect a
 runPscid (Pscid f) e = runReaderT f e
@@ -130,7 +130,7 @@ triggerRebuild :: Ref State -> String -> Pscid Unit
 triggerRebuild stateRef file = do
   { port, testCommand, testAfterRebuild, censorCodes } <- ask
   let fileName = changeExtension file "purs"
-  liftEffect ∘ catchLog "We couldn't talk to the server" $ launchAff_ do
+  liftEffect <<< catchLog "We couldn't talk to the server" $ launchAff_ do
     result <- sendCommandR port (RebuildCmd fileName Nothing Nothing)
     case result of
       Left _ -> Console.log "We couldn't talk to the server"

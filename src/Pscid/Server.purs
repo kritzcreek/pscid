@@ -19,11 +19,10 @@ import Node.Process as Process
 import PscIde as PscIde
 import PscIde.Command (Message(..))
 import PscIde.Server (ServerStartResult(..), defaultServerArgs, deleteSavedPort, getSavedPort, pickFreshPort, savePort, startServer, stopServer)
-import Pscid.Util ((∘))
 
 stopServer' :: Int -> Aff Unit
 stopServer' port = do
-  _ <- liftEffect (Process.cwd >>= try ∘ deleteSavedPort)
+  _ <- liftEffect (Process.cwd >>= try <<< deleteSavedPort)
   stopServer port
 
 startServer'

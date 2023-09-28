@@ -13,7 +13,6 @@ import Node.Platform (Platform(..))
 import Node.Process (platform)
 import Node.Process as Process
 import Options.Applicative as OA
-import Pscid.Util ((∘))
 
 type PscidSettings a =
   { port :: a
@@ -46,7 +45,7 @@ scanDefaultDirectories =
     defaultDirectories = [ "src", "app", "test", "tests" ]
     mkGlob dir = dir <> "/**/*.purs"
   in
-    Array.filterA (map (not ∘ Array.null) ∘ glob ∘ mkGlob) defaultDirectories
+    Array.filterA (map (not <<< Array.null) <<< glob <<< mkGlob) defaultDirectories
 
 spagoCmd :: String
 spagoCmd = if platform == Just Win32 then "spago.cmd" else "spago"
@@ -127,7 +126,7 @@ buildOptions defaults { port, testAfterRebuild, includes, outputDirectory, censo
 
   sepArguments :: String -> String -> Array String
   sepArguments sep =
-    Array.filter (not String.null) ∘ String.split (String.Pattern sep)
+    Array.filter (not String.null) <<< String.split (String.Pattern sep)
 
 -- | A parser for pscid's options. A `Nothing` signals the user
 -- | requested the version
