@@ -113,10 +113,14 @@ mkCommand cmd = do
   pure $ fromMaybe buildCommand (npmSpecificCommand <|> npmBuildCommand)
 
 isSpagoProject ∷ Effect Boolean
-isSpagoProject = do
-  cwd ← Process.cwd
-  let fp = Path.concat [cwd, "spago.dhall"]
-  catchException (\_ → pure false) (FSSync.exists fp)
+isSpagoProject = ado
+  dhallConfig <- exists "spago.dhall"
+  spagoConfig <- exists "spago.yaml"
+  in dhallConfig || spagoConfig
+  where 
+  exists config = do
+    cwd ← Process.cwd
+    catchException (\_ → pure false) (FSSync.exists (Path.concat [cwd, config]))
 
 -- | Accepts defaults options and
 buildOptions
