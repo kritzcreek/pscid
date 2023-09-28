@@ -19,7 +19,6 @@ You can edit this file as you like.
   , "node-buffer"
   , "node-child-process"
   , "node-fs"
-  , "node-path"
   , "node-process"
   , "node-streams"
   , "optparse"
