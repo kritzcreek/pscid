@@ -16,25 +16,26 @@ import Partial.Unsafe (unsafePartial)
 import Pscid.Console (logColored)
 import Pscid.Error (catchLog)
 
-execCommand ∷ String → String → Effect Unit
+execCommand :: String -> String -> Effect Unit
 execCommand name command = catchLog (name <> " threw an exception") do
-   let cmd = unsafePartial fromJust (Array.uncons (String.split (String.Pattern " ") command))
-   output ← Ref.new ""
-   Console.log ("Running: \"" <> command <> "\"")
-   cp ← spawn cmd.head cmd.tail defaultSpawnOptions
+  let cmd = unsafePartial fromJust (Array.uncons (String.split (String.Pattern " ") command))
+  output <- Ref.new ""
+  Console.log ("Running: \"" <> command <> "\"")
+  cp <- spawn cmd.head cmd.tail defaultSpawnOptions
 
-   let stout = stdout cp
-       sterr = stderr cp
+  let
+    stout = stdout cp
+    sterr = stderr cp
 
-   onDataString stout UTF8 \s →
-     Ref.modify_ (_ <> s) output
+  onDataString stout UTF8 \s ->
+    Ref.modify_ (_ <> s) output
 
-   onDataString sterr UTF8 \s →
-     Ref.modify_ (_ <> s) output
+  onDataString sterr UTF8 \s ->
+    Ref.modify_ (_ <> s) output
 
-   onExit cp \e → case e of
-     Normally 0 → logColored Green (name <> " successful!")
-     Normally code → do
-       Console.log =<< Ref.read output
-       logColored Red (name <> " errored with code: " <> show code)
-     BySignal _       → pure unit
+  onExit cp \e -> case e of
+    Normally 0 -> logColored Green (name <> " successful!")
+    Normally code -> do
+      Console.log =<< Ref.read output
+      logColored Red (name <> " errored with code: " <> show code)
+    BySignal _ -> pure unit

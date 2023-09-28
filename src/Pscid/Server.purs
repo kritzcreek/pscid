@@ -1,9 +1,9 @@
 module Pscid.Server
-       ( restartServer
-       , startServer'
-       , stopServer'
-       , module PscIde.Server
-       ) where
+  ( restartServer
+  , startServer'
+  , stopServer'
+  , module PscIde.Server
+  ) where
 
 import Prelude
 
@@ -18,37 +18,37 @@ import Node.ChildProcess as CP
 import Node.Process as Process
 import PscIde as PscIde
 import PscIde.Command (Message(..))
-import PscIde.Server (defaultServerArgs, startServer, stopServer, ServerStartResult(..), getSavedPort, pickFreshPort, savePort, deleteSavedPort)
+import PscIde.Server (ServerStartResult(..), defaultServerArgs, deleteSavedPort, getSavedPort, pickFreshPort, savePort, startServer, stopServer)
 import Pscid.Util ((∘))
 
-stopServer' ∷ Int → Aff Unit
+stopServer' :: Int -> Aff Unit
 stopServer' port = do
-  _ ← liftEffect (Process.cwd >>= try ∘ deleteSavedPort)
+  _ <- liftEffect (Process.cwd >>= try ∘ deleteSavedPort)
   stopServer port
 
 startServer'
-  ∷ Maybe Int
-  → String
-  → Aff (Either String Int)
+  :: Maybe Int
+  -> String
+  -> Aff (Either String Int)
 startServer' optPort outputDir = do
-  dir ← liftEffect Process.cwd
-  port ← liftEffect (getSavedPort dir)
+  dir <- liftEffect Process.cwd
+  port <- liftEffect (getSavedPort dir)
   case optPort <|> port of
-    Just p → do
-      workingDir ← attempt (PscIde.cwd p)
+    Just p -> do
+      workingDir <- attempt (PscIde.cwd p)
       case workingDir of
         -- If we find an already running server with the right working
         -- directory, we just return its port.
-        Right (Right (Message dir')) | dir == dir' → pure (Right p)
+        Right (Right (Message dir')) | dir == dir' -> pure (Right p)
         -- Otherwise we start a new server
-        _ → launchServer dir
-    Nothing → launchServer dir
+        _ -> launchServer dir
+    Nothing -> launchServer dir
 
   where
-  launchServer ∷ String → Aff (Either String Int)
+  launchServer :: String -> Aff (Either String Int)
   launchServer dir = do
-    newPort ← maybe (liftEffect pickFreshPort) pure optPort
-    _ ← liftEffect (try (savePort newPort dir))
+    newPort <- maybe (liftEffect pickFreshPort) pure optPort
+    _ <- liftEffect (try (savePort newPort dir))
     r newPort <$>
       startServer
         ( defaultServerArgs
@@ -59,17 +59,20 @@ startServer' optPort outputDir = do
             }
         )
     where
-      r newPort (Started _)    = Right newPort
-      r _       (Closed)       = Left "Closed"
-      r _       (StartError s) = Left s
+    r newPort (Started _) = Right newPort
+    r _ (Closed) = Left "Closed"
+    r _ (StartError s) = Left s
 
-restartServer ∷ Int → String → Aff Unit
+restartServer :: Int -> String -> Aff Unit
 restartServer port outputDir = do
-  _ ← attempt (stopServer port)
-  r ← attempt (startServer' (Just port) outputDir)
+  _ <- attempt (stopServer port)
+  r <- attempt (startServer' (Just port) outputDir)
   liftEffect case r of
-    Left e → do
-      Console.log ("Failed to restart psc-ide-server on port: " <> show port
-           <> "\nThe error was: " <> show e)
+    Left e -> do
+      Console.log
+        ( "Failed to restart psc-ide-server on port: " <> show port
+            <> "\nThe error was: "
+            <> show e
+        )
       Process.exit 1
-    Right _ → Console.log "I restarted psc-ide-server for you."
+    Right _ -> Console.log "I restarted psc-ide-server for you."

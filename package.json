@@ -14,7 +14,9 @@
     "compile": "spago build",
     "prepack": "rimraf output && rimraf dist && npm run compile",
     "build": "npm run -s compile",
-    "start": "node index.js"
+    "start": "node index.js",
+    "format": "purs-tidy format-in-place 'src/**/*.purs'",
+    "format:check": "purs-tidy check 'src/**/*.purs'"
   },
   "keywords": [
     "IDE",
@@ -30,6 +32,7 @@
   },
   "devDependencies": {
     "purescript": "^0.15.10",
+    "purs-tidy": "^0.10.0",
     "rimraf": "^5.0.5",
     "spago": "^0.21.0"
   }

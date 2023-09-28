@@ -32,139 +32,143 @@ import Suggest (applySuggestions)
 import Type.Prelude as TE
 
 newtype Pscid a = Pscid (ReaderT (PscidSettings Int) Effect a)
-derive newtype instance functorPscid ∷ Functor Pscid
-derive newtype instance applyPscid ∷ Apply Pscid
-derive newtype instance applicativePscid ∷ Applicative Pscid
-derive newtype instance bindPscid ∷ Bind Pscid
-derive newtype instance monadPscid ∷ Monad Pscid
-instance monadAskPscid ∷ TE.TypeEquals r (PscidSettings Int) ⇒ MonadAsk r Pscid where
+
+derive newtype instance functorPscid :: Functor Pscid
+derive newtype instance applyPscid :: Apply Pscid
+derive newtype instance applicativePscid :: Applicative Pscid
+derive newtype instance bindPscid :: Bind Pscid
+derive newtype instance monadPscid :: Monad Pscid
+instance monadAskPscid :: TE.TypeEquals r (PscidSettings Int) => MonadAsk r Pscid where
   ask = Pscid (map TE.from ask)
-instance monadEffectPscid ∷ MonadEffect Pscid where
+
+instance monadEffectPscid :: MonadEffect Pscid where
   liftEffect = Pscid ∘ liftEffect
 
-runPscid ∷ ∀ a. Pscid a → PscidSettings Int → Effect a
+runPscid :: forall a. Pscid a -> PscidSettings Int -> Effect a
 runPscid (Pscid f) e = runReaderT f e
 
-newtype State = State { errors ∷ Array PsaError }
+newtype State = State { errors :: Array PsaError }
 
-emptyState ∷ State
+emptyState :: State
 emptyState = State { errors: [] }
 
-main ∷ Effect Unit
+main :: Effect Unit
 main = launchAff_ do
-  config@{ port, outputDirectory, sourceDirectories } ← liftEffect optionParser
+  config@{ port, outputDirectory, sourceDirectories } <- liftEffect optionParser
   when (Array.null sourceDirectories) (liftEffect noSourceDirectoryError)
-  stateRef ← liftEffect (Ref.new emptyState)
+  stateRef <- liftEffect (Ref.new emptyState)
   Console.log "Starting purs ide server"
-  r ← attempt (startServer' port outputDirectory)
+  r <- attempt (startServer' port outputDirectory)
   case r of
-    Right (Right port') → do
+    Right (Right port') -> do
       let config' = config { port = port' }
-      Message directory ← do
+      Message directory <- do
         delay (Milliseconds 500.0)
-        _ ← load port' [] []
-        res ← cwd port'
+        _ <- load port' [] []
+        res <- cwd port'
         case res of
-          Right d → pure d
-          Left err → liftEffect do
+          Right d -> pure d
+          Left err -> liftEffect do
             Console.log err
             Process.exit 1
       liftEffect do
         runEffectFn2 gaze
           (Array.concatMap fileGlob sourceDirectories)
-          (\d → runPscid (triggerRebuild stateRef d) config')
+          (\d -> runPscid (triggerRebuild stateRef d) config')
         clearConsole
         initializeKeypresses
-        onKeypress (\k → runPscid (keyHandler stateRef k) config')
+        onKeypress (\k -> runPscid (keyHandler stateRef k) config')
         Console.log ("Watching " <> directory <> " on port " <> show port')
         startScreen
-    Right (Left errMsg) →
+    Right (Left errMsg) ->
       Console.log ("Failed to start psc-ide-server with: " <> errMsg)
-    Left err →
+    Left err ->
       Console.log ("Failed to start psc-ide-server with : " <> show err)
 
 -- | Given a directory, appends the globs necessary to match all PureScript and
 -- | JavaScript source files inside that directory
-fileGlob ∷ String → Array String
+fileGlob :: String -> Array String
 fileGlob dir =
-  let go x = dir <> "/**/*" <> x
-  in go <$> [".purs", ".js"]
+  let
+    go x = dir <> "/**/*" <> x
+  in
+    go <$> [ ".purs", ".js" ]
 
-keyHandler ∷ Ref State → Key → Pscid Unit
+keyHandler :: Ref State -> Key -> Pscid Unit
 keyHandler stateRef k = do
-  {port, buildCommand, outputDirectory, testCommand} ← ask
+  { port, buildCommand, outputDirectory, testCommand } <- ask
   case k of
-    Key {ctrl: false, name: "b", meta: false} →
+    Key { ctrl: false, name: "b", meta: false } ->
       liftEffect (execCommand "Build" $ printCLICommand buildCommand)
-    Key {ctrl: false, name: "t", meta: false} →
+    Key { ctrl: false, name: "t", meta: false } ->
       liftEffect (execCommand "Test" $ printCLICommand testCommand)
-    Key {ctrl: false, name: "r", meta: false} → liftEffect do
+    Key { ctrl: false, name: "r", meta: false } -> liftEffect do
       clearConsole
       catchLog "Failed to restart server" $ launchAff_ do
         restartServer port outputDirectory
-        _ ← load port [] []
+        _ <- load port [] []
         pure unit
       Console.log owl
-    Key {ctrl: false, name: "s", meta: false} → liftEffect do
-      State state ← Ref.read stateRef
+    Key { ctrl: false, name: "s", meta: false } -> liftEffect do
+      State state <- Ref.read stateRef
       case Array.head state.errors of
-        Nothing →
+        Nothing ->
           Console.log "No suggestions available"
-        Just e →
-          catchLog "Couldn't apply suggestion." (applySuggestions [e])
-    Key {ctrl: false, name: "q", meta: false} →
+        Just e ->
+          catchLog "Couldn't apply suggestion." (applySuggestions [ e ])
+    Key { ctrl: false, name: "q", meta: false } ->
       liftEffect (Console.log "Bye!" <* runAff (either exit exit) (stopServer' port))
-    Key {ctrl: true, name: "c", meta: false} →
+    Key { ctrl: true, name: "c", meta: false } ->
       Console.log "Press q to exit"
-    Key {name} →
+    Key { name } ->
       Console.log name
   where
-    exit ∷ ∀ a. a → Effect Unit
-    exit = const (Process.exit 0)
+  exit :: forall a. a -> Effect Unit
+  exit = const (Process.exit 0)
 
-triggerRebuild ∷ Ref State → String → Pscid Unit
+triggerRebuild :: Ref State -> String -> Pscid Unit
 triggerRebuild stateRef file = do
-  {port, testCommand, testAfterRebuild, censorCodes} ← ask
+  { port, testCommand, testAfterRebuild, censorCodes } <- ask
   let fileName = changeExtension file "purs"
   liftEffect ∘ catchLog "We couldn't talk to the server" $ launchAff_ do
-    result ← sendCommandR port (RebuildCmd fileName Nothing Nothing)
+    result <- sendCommandR port (RebuildCmd fileName Nothing Nothing)
     case result of
-      Left _ → Console.log "We couldn't talk to the server"
-      Right errs → liftEffect do
-        parsedErrors ← handleRebuildResult fileName censorCodes errs
-        Ref.write (State {errors: parsedErrors}) stateRef
+      Left _ -> Console.log "We couldn't talk to the server"
+      Right errs -> liftEffect do
+        parsedErrors <- handleRebuildResult fileName censorCodes errs
+        Ref.write (State { errors: parsedErrors }) stateRef
         case Array.head parsedErrors >>= _.suggestion of
-          Nothing → pure unit
-          Just _ → suggestionHint
+          Nothing -> pure unit
+          Just _ -> suggestionHint
         when (testAfterRebuild && isRight errs)
           (execCommand "Test" $ printCLICommand testCommand)
 
-changeExtension ∷ String → String → String
+changeExtension :: String -> String -> String
 changeExtension s ex =
   case String.lastIndexOf (Pattern ".") s of
-    Nothing →
+    Nothing ->
       s
-    Just ix →
+    Just ix ->
       String.take ix s <> "." <> ex
 
 handleRebuildResult
-  ∷ String
-  → Array String
-  → Either Json Json
-  → Effect (Array PsaError)
+  :: String
+  -> Array String
+  -> Either Json Json
+  -> Effect (Array PsaError)
 handleRebuildResult file censorCodes result = do
   clearConsole
   Console.log ("Checking " <> file)
   case both parseErrors result of
-    Right warnings →
+    Right warnings ->
       either
-        (\_ → Console.log "Failed to parse warnings" $> [])
-        (\e → psaPrinter owl false e $> e)
+        (\_ -> Console.log "Failed to parse warnings" $> [])
+        (\e -> psaPrinter owl false e $> e)
         (filterWarnings censorCodes <$> warnings)
-    Left errors →
+    Left errors ->
       either
-        (\_ → Console.log "Failed to parse errors" $> [])
-        (\e → psaPrinter owl true e $> e)
+        (\_ -> Console.log "Failed to parse errors" $> [])
+        (\e -> psaPrinter owl true e $> e)
         errors
 
-foreign import gaze ∷ EffectFn2 (Array String) (String → Effect Unit) Unit
+foreign import gaze :: EffectFn2 (Array String) (String -> Effect Unit) Unit
